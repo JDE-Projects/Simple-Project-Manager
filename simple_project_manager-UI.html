@@ -216,6 +216,15 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 /* tag overflow chip */
 .tag-more { background:color-mix(in srgb, var(--text-faint) 18%, transparent); color:var(--text-dim); cursor:default; }
 
+/* up/down reorder controls */
+.reorder { display:inline-flex; gap:1px; flex:0 0 auto; opacity:0; transition:opacity .15s; }
+.phase-head:hover .reorder, .step-head:hover .reorder { opacity:1; }
+.kid-row .reorder { opacity:1; }   /* always shown on flyout cards */
+.rbtn { width:18px; height:18px; padding:0; border:none; background:transparent;
+  color:var(--text-faint); cursor:pointer; font-size:9px; line-height:1; border-radius:4px; }
+.rbtn:hover:not(:disabled) { color:var(--accent); }
+.rbtn:disabled { opacity:.3; cursor:default; }
+
 /* ---- bottom bar ---- */
 .bottom-bar {
   position:fixed; left:0; right:0; bottom:0; height:44px; z-index:50;
@@ -494,6 +503,12 @@ function deadlineClass(d){
   if (days <= 7) return "dl-soon";
   return "";
 }
+function reorderCtl(id, isFirst, isLast){
+  return `<span class="reorder">` +
+    `<button class="rbtn" title="Move up" ${isFirst?'disabled':''} onclick="event.stopPropagation();moveItem('${id}',-1)">▲</button>` +
+    `<button class="rbtn" title="Move down" ${isLast?'disabled':''} onclick="event.stopPropagation();moveItem('${id}',1)">▼</button>` +
+    `</span>`;
+}
 
 /* ---------- render ---------- */
 function statusPill(status){
@@ -530,11 +545,12 @@ function render(){
   if (!STATE.items.length){
     tree.innerHTML = '<div class="empty-tree">No phases yet — click <b>+ Phase</b> to start.</div>';
   } else {
-    tree.innerHTML = buildTree(STATE.items).map(renderPhase).join("");
+    const phases = buildTree(STATE.items);
+    tree.innerHTML = phases.map((p,i)=>renderPhase(p, i, phases.length)).join("");
   }
 }
 
-function renderPhase(p){
+function renderPhase(p, idx, count){
   const isCol = collapsed.has(p.id);
   const sel = p.id === selectedId ? " selected" : "";
   return `<div class="phase ${isCol?'collapsed':''}${sel}" data-id="${p.id}">
@@ -543,13 +559,14 @@ function renderPhase(p){
       <span class="pname grow">${esc(p.name)}</span>
       ${tagsHtml(p.tags)}
       ${p.showMeter ? progressMeter(p.pct) : ""}
+      ${reorderCtl(p.id, idx===0, idx===count-1)}
       <button class="phase-add-step" onclick="event.stopPropagation();addStepToPhase('${p.id}')">+ Step</button>
     </div>
-    <div class="phase-body">${p.steps.map(renderStep).join("")}</div>
+    <div class="phase-body">${p.steps.map((s,i)=>renderStep(s, i, p.steps.length)).join("")}</div>
   </div>`;
 }
 
-function renderStep(s){
+function renderStep(s, idx, count){
   const isCol = collapsed.has(s.id);
   const sel = s.id === selectedId ? " selected" : "";
   const doneCls = s.status === "Done" ? " step-done" : "";
@@ -580,6 +597,7 @@ function renderStep(s){
         ${s.showMeter ? progressMeter(s.pct) : ""}
         ${statusPill(s.status)}
       </span>
+      ${reorderCtl(s.id, idx===0, idx===count-1)}
     </div>
     <div class="step-body">${kids}</div>
   </div>`;
@@ -683,24 +701,25 @@ function childrenSection(){
           `<button type="button" class="mini-add" onclick="draftAdd('Action')" title="Add action item">+</button></div>`;
   h += `<div class="kids-list">`;
   h += panelDraft.actions.length
-       ? panelDraft.actions.map(actionCard).join("")
+       ? panelDraft.actions.map((a,i)=>actionCard(a, i, panelDraft.actions.length)).join("")
        : `<div class="kids-empty">No action items yet.</div>`;
   h += `</div>`;
   h += `<div class="kids-edit-head"><span>Contacts</span>` +
        `<button type="button" class="mini-add" onclick="draftAdd('Contact')" title="Add contact">+</button></div>`;
   h += `<div class="kids-list">`;
   h += panelDraft.contacts.length
-       ? panelDraft.contacts.map(contactCard).join("")
+       ? panelDraft.contacts.map((c,i)=>contactCard(c, i, panelDraft.contacts.length)).join("")
        : `<div class="kids-empty">No contacts yet.</div>`;
   h += `</div>`;
   return h;
 }
-function actionCard(a){
+function actionCard(a, idx, count){
   const open = panelExpanded.has(a.id);
   return `<div class="kid-card" data-cid="${a.id}">
     <div class="kid-row">
       <input type="checkbox" class="kc-done" ${a.status==='Done'?'checked':''}>
       <input class="kc-name" value="${esc(a.name)}" placeholder="Action item">
+      ${reorderChildCtl('Action', a.id, idx===0, idx===count-1)}
       <button type="button" class="kc-exp" onclick="draftToggle('${a.id}')" title="More fields">${open?'⌃':'⌄'}</button>
       <button type="button" class="kc-del" onclick="draftDel('Action','${a.id}')" title="Remove">×</button>
     </div>
@@ -713,10 +732,11 @@ function actionCard(a){
     </div>` : ``}
   </div>`;
 }
-function contactCard(c){
+function contactCard(c, idx, count){
   return `<div class="kid-card" data-cid="${c.id}">
     <div class="kid-row">
       <input class="kc-name" value="${esc(c.name)}" placeholder="Name / vendor">
+      ${reorderChildCtl('Contact', c.id, idx===0, idx===count-1)}
       <button type="button" class="kc-del" onclick="draftDel('Contact','${c.id}')" title="Remove">×</button>
     </div>
     <div class="kid-more">
@@ -866,6 +886,50 @@ function addStepToPhase(phaseId){
 function deleteItem(id){
   const i = indexOfId(id); if (i<0) return;
   STATE.items.splice(i, blockEnd(i) - i);
+}
+
+// previous same-level sibling start index (stops at a parent boundary), or -1
+function siblingPrev(i){
+  const L = lvlOf(STATE.items[i].type);
+  for (let j=i-1; j>=0; j--){
+    const lj = lvlOf(STATE.items[j].type);
+    if (lj < L) return -1;
+    if (lj === L) return j;
+  }
+  return -1;
+}
+// move a phase/step (with its whole subtree) up or down among its siblings
+function moveItem(id, dir){
+  const i = indexOfId(id); if (i<0) return;
+  const L = lvlOf(STATE.items[i].type);
+  const end = blockEnd(i);
+  if (dir < 0){
+    const pj = siblingPrev(i); if (pj < 0) return;
+    const block = STATE.items.splice(i, end - i);
+    STATE.items.splice(pj, 0, ...block);
+  } else {
+    if (end >= STATE.items.length || lvlOf(STATE.items[end].type) < L) return; // no next sibling
+    const nextEnd = blockEnd(end);
+    const block = STATE.items.splice(i, end - i);
+    STATE.items.splice(i + (nextEnd - end), 0, ...block);
+  }
+  markDirty(); render();
+}
+// reorder an action/contact within the step flyout's draft
+function draftMove(type, id, dir){
+  syncDraftFromDOM();
+  const arr = type === "Action" ? panelDraft.actions : panelDraft.contacts;
+  const i = arr.findIndex(x=>x.id===id); if (i<0) return;
+  const j = i + dir;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  refreshChildren();
+}
+function reorderChildCtl(type, id, isFirst, isLast){
+  return `<span class="reorder">` +
+    `<button class="rbtn" title="Move up" ${isFirst?'disabled':''} onclick="draftMove('${type}','${id}',-1)">▲</button>` +
+    `<button class="rbtn" title="Move down" ${isLast?'disabled':''} onclick="draftMove('${type}','${id}',1)">▼</button>` +
+    `</span>`;
 }
 
 /* ---------- document commands (New / Open / Save / Save As) ---------- */
