@@ -202,6 +202,20 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 .more-line:hover { color:var(--accent); }
 .more-line .more-hint { color:var(--text-faint); }
 
+/* progress roll-up meter */
+.progress { display:inline-flex; align-items:center; gap:6px; flex:0 0 auto; }
+.meter { display:inline-block; width:52px; height:6px; border-radius:999px; overflow:hidden;
+  background:color-mix(in srgb, var(--text-faint) 22%, transparent); }
+.meter-fill { display:block; height:100%; border-radius:999px; background:var(--accent); transition:width .2s; }
+.meter-pct { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-dim); min-width:30px; text-align:right; }
+
+/* deadline urgency */
+.deadline.dl-soon { color:var(--amber); }
+.deadline.dl-overdue { color:var(--red); font-weight:600; }
+
+/* tag overflow chip */
+.tag-more { background:color-mix(in srgb, var(--text-faint) 18%, transparent); color:var(--text-dim); cursor:default; }
+
 /* ---- bottom bar ---- */
 .bottom-bar {
   position:fixed; left:0; right:0; bottom:0; height:44px; z-index:50;
@@ -443,7 +457,42 @@ function buildTree(items){
     else if (it.type === "Action"){ if (step) step.actions.push(it); }
     else if (it.type === "Contact"){ if (step) step.contacts.push(it); }
   }
+  // roll-up progress + the "next" action per step, and phase averages
+  for (const ph of phases){
+    let sum = 0;
+    for (const st of ph.steps){
+      st.pct = stepPct(st);
+      st.showMeter = (st.actions || []).length > 0;
+      sum += st.pct;
+    }
+    ph.pct = ph.steps.length ? Math.round(sum / ph.steps.length) : 0;
+    ph.showMeter = ph.steps.length > 0;
+  }
   return phases;
+}
+
+function stepPct(st){
+  const acts = st.actions || [];
+  if (acts.length){
+    const done = acts.filter(a => a.status === "Done").length;
+    return Math.round(100 * done / acts.length);
+  }
+  return st.status === "Done" ? 100 : 0;
+}
+function progressMeter(pct){
+  return `<span class="progress" title="${pct}% complete">` +
+    `<span class="meter"><span class="meter-fill" style="width:${pct}%"></span></span>` +
+    `<span class="meter-pct">${pct}%</span></span>`;
+}
+function deadlineClass(d){
+  if (!d) return "";
+  const due = new Date(d + "T00:00:00");
+  if (isNaN(due)) return "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = Math.round((due - today) / 86400000);
+  if (days < 0)  return "dl-overdue";
+  if (days <= 7) return "dl-soon";
+  return "";
 }
 
 /* ---------- render ---------- */
@@ -467,7 +516,13 @@ function prioClassOf(p){
 }
 function tagsHtml(tags){
   if (!tags || !tags.length) return "";
-  return `<span class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</span>`;
+  const CAP = 3;
+  let html = tags.slice(0, CAP).map(t=>`<span class="tag">${esc(t)}</span>`).join("");
+  if (tags.length > CAP){
+    const rest = tags.slice(CAP);
+    html += `<span class="tag tag-more" title="${esc(rest.join(', '))}">+${rest.length}</span>`;
+  }
+  return `<span class="tags">${html}</span>`;
 }
 
 function render(){
@@ -487,6 +542,7 @@ function renderPhase(p){
       <span class="caret-wrap" onclick="event.stopPropagation();toggle('${p.id}')">${ICON.caret}</span>
       <span class="pname grow">${esc(p.name)}</span>
       ${tagsHtml(p.tags)}
+      ${p.showMeter ? progressMeter(p.pct) : ""}
       <button class="phase-add-step" onclick="event.stopPropagation();addStepToPhase('${p.id}')">+ Step</button>
     </div>
     <div class="phase-body">${p.steps.map(renderStep).join("")}</div>
@@ -519,8 +575,9 @@ function renderStep(s){
       <span class="sname grow">${esc(s.name)}</span>
       <span class="row-meta">
         ${s.owner ? `<span class="owner">@${esc(s.owner)}</span>` : ""}
-        ${s.deadline ? `<span class="deadline">${esc(s.deadline)}</span>` : ""}
+        ${s.deadline ? `<span class="deadline ${s.status==='Done'?'':deadlineClass(s.deadline)}">${esc(s.deadline)}</span>` : ""}
         ${tagsHtml(s.tags)}
+        ${s.showMeter ? progressMeter(s.pct) : ""}
         ${statusPill(s.status)}
       </span>
     </div>
@@ -531,11 +588,12 @@ function renderStep(s){
 function renderAction(a){
   const done = a.status === "Done";
   const sel = a.id === selectedId ? " selected" : "";
+  const dlCls = done ? "" : deadlineClass(a.deadline);
   return `<div class="action ${done?'done':''}${sel}" data-id="${a.id}" onclick="select('${a.id}')">
     <span class="check" onclick="event.stopPropagation();toggleDone('${a.id}')">${ICON.check}</span>
     ${priorityFlag(a.priority)}
     <span class="aname grow">${esc(a.name)}</span>
-    ${a.deadline ? `<span class="deadline">${esc(a.deadline)}</span>` : ""}
+    ${a.deadline ? `<span class="deadline ${dlCls}">${esc(a.deadline)}</span>` : ""}
   </div>`;
 }
 
@@ -559,6 +617,10 @@ function expandAll(open){
   collapsed.clear();
   if (!open) for (const it of STATE.items) if (it.type==="Phase"||it.type==="Step") collapsed.add(it.id);
   render();
+}
+// Done steps start collapsed so they recede; the user can still expand them.
+function autoCollapseDone(){
+  for (const it of STATE.items) if (it.type === "Step" && it.status === "Done") collapsed.add(it.id);
 }
 
 /* ---------- selection + edit panel ---------- */
@@ -760,6 +822,7 @@ function savePanel(){
   if (el("f_tags"))     it.tags = el("f_tags").value.split(",").map(s=>s.trim()).filter(Boolean);
   if (el("f_notes"))    it.notes = el("f_notes").value;
   if (panelDraft) commitChildren(it);
+  if (it.type === "Step" && it.status === "Done") collapsed.add(it.id);  // recede on completion
   pendingNewIds = []; panelDraft = null; markDirty(); hidePanel(); selectedId = null; render();
 }
 
@@ -837,7 +900,7 @@ async function saveAs(){
 }
 function loadInto(items, filename){
   STATE.items = items || []; STATE.filename = filename || ""; STATE.dirty = false;
-  selectedId = null; collapsed.clear(); hidePanel(); render(); updateMeta();
+  selectedId = null; collapsed.clear(); autoCollapseDone(); hidePanel(); render(); updateMeta();
 }
 
 /* ---------- dirty tracking + recovery + meta ---------- */
@@ -914,6 +977,7 @@ async function boot(){
   applyTheme(STATE.theme || "dark");
   document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.0.0");
   updateMeta();
+  autoCollapseDone();
   render();
   if (window.pywebview){
     // offer to restore unsaved work from a previous session
@@ -922,7 +986,7 @@ async function boot(){
       const ok = await uiConfirm("Unsaved work from a previous session was found. Restore it?","Restore");
       if (ok){
         STATE.items = rec.items || []; STATE.filename = rec.filename || "";
-        STATE.dirty = true; collapsed.clear(); render(); updateMeta();
+        STATE.dirty = true; collapsed.clear(); autoCollapseDone(); render(); updateMeta();
       } else {
         await pywebview.api.clear_recovery();
       }
