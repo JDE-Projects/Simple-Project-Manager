@@ -21,6 +21,7 @@
   --text:#dfe7f2; --text-dim:#8a98b0; --text-faint:#5a6678;
   --accent:#4dd6c1; --accent-2:#2bb6a3; --glow:rgba(77,214,193,0.35);
   --amber:#f0b860; --red:#ff6b7a; --green:#5ce39b; --blue:#6db3ff; --purple:#b48cff;
+  --prio-normal:#46cf93;         /* softer green for the Normal-priority bar */
   --btn-text:#042b27;            /* dark text on teal button */
   --radius:14px; --radius-sm:9px;
 }
@@ -30,7 +31,8 @@ body.light {
   --border:#d3dee1; --border-2:#bcccd0;
   --text:#16212c; --text-dim:#4f606d; --text-faint:#8593a0;
   --accent:#178577; --accent-2:#0f6b5f; --glow:rgba(23,133,119,0.20);
-  --amber:#b07d12; --red:#cf3b50; --green:#1c9560; --blue:#2b6fd0; --purple:#6f48cf;
+  --amber:#e0900a; --red:#cf3b50; --green:#1c9560; --blue:#2b6fd0; --purple:#6f48cf;
+  --prio-normal:#2a9d6b;         /* softer green for the Normal-priority bar */
   --btn-text:#ffffff;            /* white text on the deeper light button */
 }
 
@@ -97,6 +99,8 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 /* ---- tree ---- */
 .scroll { flex:1; overflow:auto; padding:4px 24px 72px; }
 .tree { max-width:1080px; margin:0 auto; }
+.empty-tree { padding:48px 24px; color:var(--text-dim); font-size:14px; text-align:center; }
+.empty-tree b { color:var(--accent); font-weight:600; }
 
 .phase {
   background:linear-gradient(180deg, var(--panel), var(--bg-2));
@@ -107,6 +111,12 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
   display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer;
 }
 .phase-head .pname { font-size:16px; font-weight:600; }
+.phase-add-step {
+  font-family:"Sora", sans-serif; font-size:12px; font-weight:500; color:var(--text-dim);
+  background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:5px 10px; cursor:pointer; transition:.15s; flex:0 0 auto;
+}
+.phase-add-step:hover { border-color:var(--accent); color:var(--accent); transform:translateY(-1px); }
 .phase-body { padding:0 14px 12px 14px; }
 
 .caret { width:16px; height:16px; flex:0 0 auto; color:var(--text-dim); transition:transform .15s; }
@@ -121,6 +131,8 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 .step::before {
   content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--border-2);
 }
+.step.prio-low::before { background:var(--border-2); }      /* faint gray */
+.step.prio-normal::before { background:var(--prio-normal); } /* soft green — on track */
 .step.prio-high::before { background:var(--amber); }
 .step.prio-critical::before { background:var(--red); }
 .step-head { display:flex; align-items:center; gap:10px; padding:11px 14px 11px 16px; cursor:pointer; }
@@ -138,8 +150,11 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 }
 .st-notstarted { color:var(--text-dim); border-color:var(--border-2); }
 .st-inprogress { color:var(--blue);  background:color-mix(in srgb, var(--blue) 15%, transparent); }
-.st-done       { color:var(--green); background:color-mix(in srgb, var(--green) 15%, transparent); }
+.st-done       { color:var(--text-faint); background:color-mix(in srgb, var(--text-faint) 16%, transparent); }
 .st-blocked    { color:var(--red);   background:color-mix(in srgb, var(--red) 15%, transparent); }
+
+/* a done step reads like a done action: name grayed + struck through */
+.step.step-done .sname { color:var(--text-faint); text-decoration:line-through; }
 
 .owner { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-dim); }
 .deadline { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
@@ -177,6 +192,15 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 .contact .cname { font-weight:500; color:var(--text); font-size:13.5px; }
 .contact .cnote { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
 .contact-ico { width:15px; height:15px; color:var(--purple); flex:0 0 auto; }
+.contact .cgrow { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* keep every row to a single tidy line — full text lives in the flyout */
+.pname, .sname, .aname { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* "+N more" overflow line under a step */
+.more-line { font-size:12px; color:var(--text-dim); cursor:pointer; padding:5px 4px 2px; transition:.15s; }
+.more-line:hover { color:var(--accent); }
+.more-line .more-hint { color:var(--text-faint); }
 
 /* ---- bottom bar ---- */
 .bottom-bar {
@@ -188,10 +212,12 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 .tog-wrap { display:flex; align-items:center; gap:8px; cursor:pointer; }
 .tog { position:relative; width:36px; height:20px; display:inline-block; }
 .tog input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
-.tog-track { position:absolute; inset:0; border-radius:999px; background:var(--panel-2); border:1px solid var(--border-2); transition:.15s; }
-.tog-thumb { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:999px; background:var(--text-faint); transition:.15s; }
+.tog-track { position:absolute; inset:0; box-sizing:border-box; border-radius:999px;
+  background:var(--panel-2); border:1px solid var(--border-2); transition:.15s; }
+.tog-thumb { position:absolute; top:50%; left:2px; width:16px; height:16px; border-radius:999px;
+  background:var(--text-faint); transform:translateY(-50%); transition:.15s; }
 .tog input:checked ~ .tog-track { background:var(--accent-2); border-color:var(--accent); }
-.tog input:checked ~ .tog-thumb { transform:translateX(16px); background:var(--btn-text); }
+.tog input:checked ~ .tog-thumb { transform:translate(16px, -50%); background:var(--btn-text); }
 .tog-label { font-size:13px; color:var(--text-dim); }
 .ver-label { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
 .btn-update {
@@ -201,6 +227,99 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 }
 .btn-update:hover { border-color:var(--accent); color:var(--accent); }
 .update-msg { font-size:12px; color:var(--accent); }
+
+/* ---- selection ---- */
+.phase-head, .step-head { cursor:pointer; }
+.caret-wrap { display:inline-flex; align-items:center; cursor:pointer; }
+.action, .contact { cursor:pointer; padding-left:6px; padding-right:6px; border-radius:6px; }
+.phase.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.step.selected { border-color:var(--accent); }
+.action.selected, .contact.selected { background:color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* ---- right-side edit panel ---- */
+.panel-scrim { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:55; display:none; }
+.panel-scrim.open { display:block; }
+.edit-panel {
+  position:fixed; top:0; right:0; height:100%; width:380px; max-width:92vw; z-index:60;
+  background:linear-gradient(180deg, var(--panel), var(--bg-2));
+  border-left:1px solid var(--border); box-shadow:-10px 0 34px rgba(0,0,0,.32);
+  transform:translateX(100%); transition:transform .2s ease;
+  display:flex; flex-direction:column;
+}
+.edit-panel.open { transform:translateX(0); }
+.panel-head { display:flex; align-items:flex-start; justify-content:space-between;
+  padding:16px 18px; border-bottom:1px solid var(--border); gap:12px; }
+.panel-head .pt { font-size:11px; letter-spacing:.6px; text-transform:uppercase; color:var(--text-faint); }
+.panel-head .pn { font-size:16px; font-weight:600; margin-top:2px; word-break:break-word; }
+.panel-head-main { min-width:0; flex:1; }
+.panel-ctx { margin-top:9px; display:flex; align-items:baseline; gap:7px; }
+.panel-ctx .ctx-h { font-size:10px; letter-spacing:.6px; text-transform:uppercase; color:var(--text-faint); flex:0 0 auto; }
+.panel-ctx .ctx-n { font-size:12px; color:var(--text-faint);
+  flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.panel-x { background:transparent; border:none; color:var(--text-dim); font-size:24px;
+  line-height:1; cursor:pointer; flex:0 0 auto; }
+.panel-x:hover { color:var(--accent); }
+.panel-body { flex:1; overflow:auto; padding:16px 18px; display:flex; flex-direction:column; gap:13px; }
+.fld { display:flex; flex-direction:column; gap:5px; }
+.fld label { font-size:11px; color:var(--text-dim); font-weight:600; letter-spacing:.3px; }
+.fld input, .fld select, .fld textarea {
+  font-family:"Sora", sans-serif; font-size:13px; color:var(--text); width:100%;
+  background:var(--panel-2); border:1px solid var(--border-2); border-radius:var(--radius-sm);
+  padding:8px 10px; outline:none; transition:.15s;
+}
+.fld input:focus, .fld select:focus, .fld textarea:focus { border-color:var(--accent); }
+.fld textarea { resize:vertical; min-height:66px; line-height:1.45; }
+.fld-row { display:flex; gap:10px; }
+.fld-row .fld { flex:1; min-width:0; }
+.chk-row { display:flex; align-items:center; gap:9px; }
+.chk-row input { width:18px; height:18px; accent-color:var(--accent-2); cursor:pointer; }
+.chk-row span { font-size:13px; }
+.panel-foot { display:flex; align-items:center; gap:8px; padding:14px 18px; border-top:1px solid var(--border); }
+.panel-foot .spacer { flex:1; }
+button.btn.danger { background:transparent; color:var(--red);
+  border:1px solid color-mix(in srgb, var(--red) 45%, transparent); }
+button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
+
+/* children editor inside a step's panel */
+.kids-edit { margin-top:4px; border-top:1px solid var(--border); padding-top:6px; }
+.kids-edit-head { display:flex; align-items:center; justify-content:space-between;
+  font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase;
+  color:var(--text-faint); margin:14px 0 6px; }
+.mini-add { width:22px; height:22px; border-radius:6px; border:1px solid var(--border-2);
+  background:var(--panel-2); color:var(--text-dim); cursor:pointer; font-size:15px;
+  line-height:1; display:flex; align-items:center; justify-content:center; transition:.15s; }
+.mini-add:hover { border-color:var(--accent); color:var(--accent); }
+.kids-list { display:flex; flex-direction:column; gap:6px; }
+.kids-empty { font-size:12px; color:var(--text-faint); padding:2px 2px 4px; }
+.kid-card { background:var(--panel-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 8px; }
+.kid-row { display:flex; align-items:center; gap:7px; }
+.kid-row .kc-name { flex:1; min-width:0; font-family:"Sora", sans-serif; font-size:13px;
+  color:var(--text); background:transparent; border:1px solid transparent; border-radius:6px; padding:4px 6px; }
+.kid-row .kc-name:hover { border-color:var(--border-2); }
+.kid-row .kc-name:focus { border-color:var(--accent); background:var(--bg-2); outline:none; }
+.kc-done { width:17px; height:17px; accent-color:var(--green); flex:0 0 auto; cursor:pointer; }
+.kc-exp, .kc-del { width:24px; height:24px; flex:0 0 auto; border:none; background:transparent;
+  cursor:pointer; color:var(--text-faint); font-size:14px; border-radius:6px; transition:.15s; }
+.kc-exp:hover { color:var(--accent); }
+.kc-del:hover { color:var(--red); }
+.kid-more { margin-top:8px; display:flex; flex-direction:column; gap:8px; padding-left:2px; }
+
+/* ---- confirm modal ---- */
+.modal-scrim { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:80;
+  display:none; align-items:center; justify-content:center; }
+.modal-scrim.open { display:flex; }
+.modal { background:linear-gradient(180deg, var(--panel), var(--bg-2));
+  border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px;
+  width:380px; max-width:90vw; box-shadow:0 14px 44px rgba(0,0,0,.4); }
+.modal .m-msg { font-size:14px; color:var(--text); margin-bottom:18px; line-height:1.5; }
+.modal .m-foot { display:flex; justify-content:flex-end; gap:8px; }
+
+/* ---- toast ---- */
+.toast { position:fixed; left:50%; bottom:60px; z-index:90;
+  transform:translateX(-50%) translateY(20px); opacity:0; pointer-events:none; transition:.2s;
+  background:var(--panel-2); border:1px solid var(--border-2); color:var(--text);
+  padding:10px 16px; border-radius:var(--radius-sm); font-size:13px; box-shadow:0 6px 20px rgba(0,0,0,.3); }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -227,15 +346,12 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
   </header>
 
   <div class="toolbar">
-    <button class="btn primary" disabled title="Arrives in 3b">New</button>
-    <button class="btn" disabled title="Arrives in 3b">Open…</button>
-    <button class="btn" disabled title="Arrives in 3b">Save</button>
-    <button class="btn" disabled title="Arrives in 3b">Save As…</button>
+    <button class="btn" onclick="newProject()">New</button>
+    <button class="btn" onclick="openProject()">Open…</button>
+    <button class="btn primary" onclick="saveProject()">Save</button>
+    <button class="btn" onclick="saveAs()">Save As…</button>
     <span class="sep"></span>
-    <button class="btn" disabled title="Arrives in 3b">+ Phase</button>
-    <button class="btn" disabled title="Arrives in 3b">+ Step</button>
-    <button class="btn" disabled title="Arrives in 3b">+ Action</button>
-    <button class="btn" disabled title="Arrives in 3b">+ Contact</button>
+    <button class="btn" onclick="addPhase()">+ Phase</button>
     <span class="sep"></span>
     <button class="btn" onclick="expandAll(true)">Expand all</button>
     <button class="btn" onclick="expandAll(false)">Collapse all</button>
@@ -261,9 +377,48 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
     </div>
   </div>
 
+  <!-- right-side edit panel -->
+  <div class="panel-scrim" id="scrim" onclick="closePanel()"></div>
+  <aside class="edit-panel" id="panel" aria-hidden="true">
+    <div class="panel-head">
+      <div class="panel-head-main">
+        <div class="pt" id="panel-type">Edit</div>
+        <div class="pn" id="panel-name">—</div>
+        <div class="panel-ctx" id="panel-context"></div>
+      </div>
+      <button class="panel-x" onclick="closePanel()" title="Close">×</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-foot">
+      <button class="btn danger" onclick="deletePanel()">Delete</button>
+      <span class="spacer"></span>
+      <button class="btn" onclick="closePanel()">Cancel</button>
+      <button class="btn primary" onclick="savePanel()">Save</button>
+    </div>
+  </aside>
+
+  <!-- confirm modal -->
+  <div class="modal-scrim" id="modal-scrim">
+    <div class="modal">
+      <div class="m-msg" id="modal-msg"></div>
+      <div class="m-foot">
+        <button class="btn" id="modal-cancel">Cancel</button>
+        <button class="btn primary" id="modal-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
 <script>
-let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "1.0.0" };
+let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "1.0.0", filename: "", dirty: false };
 const collapsed = new Set();   // ids of collapsed phases/steps
+let selectedId = null;         // id of the row whose edit panel is open
+let recoveryTimer = null;
+let panelDraft = null;         // {actions:[], contacts:[]} working copy for a step panel
+let panelExpanded = new Set(); // child ids whose detail is expanded in the panel
+const ACT_CAP = 3, CON_CAP = 2; // tree preview caps; overflow opens the step
+let pendingNewIds = [];        // ids added by the toolbar but not yet committed (Cancel discards)
 
 /* ---------- icons ---------- */
 const ICON = {
@@ -298,8 +453,16 @@ function statusPill(status){
   return `<span class="pill st-${key}">${esc(status)}</span>`;
 }
 function priorityFlag(p){
+  // flag stays an escalation cue — only High and Critical show one
   if (p === "High")     return ICON.flag.replace('class="flag"','class="flag high"');
   if (p === "Critical") return ICON.flag.replace('class="flag"','class="flag critical"');
+  return "";
+}
+function prioClassOf(p){
+  if (p === "Critical") return "prio-critical";
+  if (p === "High")     return "prio-high";
+  if (p === "Normal")   return "prio-normal";
+  if (p === "Low")      return "prio-low";
   return "";
 }
 function tagsHtml(tags){
@@ -308,19 +471,23 @@ function tagsHtml(tags){
 }
 
 function render(){
-  const phases = buildTree(STATE.items);
   const tree = document.getElementById("tree");
-  if (!phases.length){ tree.innerHTML = '<div class="deadline" style="padding:24px">No items yet.</div>'; return; }
-  tree.innerHTML = phases.map(renderPhase).join("");
+  if (!STATE.items.length){
+    tree.innerHTML = '<div class="empty-tree">No phases yet — click <b>+ Phase</b> to start.</div>';
+  } else {
+    tree.innerHTML = buildTree(STATE.items).map(renderPhase).join("");
+  }
 }
 
 function renderPhase(p){
   const isCol = collapsed.has(p.id);
-  return `<div class="phase ${isCol?'collapsed':''}" data-id="${p.id}">
-    <div class="phase-head" onclick="toggle('${p.id}')">
-      ${ICON.caret}
+  const sel = p.id === selectedId ? " selected" : "";
+  return `<div class="phase ${isCol?'collapsed':''}${sel}" data-id="${p.id}">
+    <div class="phase-head" onclick="select('${p.id}')">
+      <span class="caret-wrap" onclick="event.stopPropagation();toggle('${p.id}')">${ICON.caret}</span>
       <span class="pname grow">${esc(p.name)}</span>
       ${tagsHtml(p.tags)}
+      <button class="phase-add-step" onclick="event.stopPropagation();addStepToPhase('${p.id}')">+ Step</button>
     </div>
     <div class="phase-body">${p.steps.map(renderStep).join("")}</div>
   </div>`;
@@ -328,15 +495,25 @@ function renderPhase(p){
 
 function renderStep(s){
   const isCol = collapsed.has(s.id);
-  const prioClass = s.priority === "Critical" ? "prio-critical" : (s.priority === "High" ? "prio-high" : "");
+  const sel = s.id === selectedId ? " selected" : "";
+  const doneCls = s.status === "Done" ? " step-done" : "";
+  const prioClass = prioClassOf(s.priority);
   const actions = s.actions || [], contacts = s.contacts || [];
   let kids = "";
-  if (actions.length)  kids += `<div class="kids-head">Action items</div>` + actions.map(renderAction).join("");
-  if (contacts.length) kids += `<div class="kids-head">Contacts</div>` + contacts.map(renderContact).join("");
+  if (actions.length){
+    kids += `<div class="kids-head">Action items</div>` +
+            actions.slice(0, ACT_CAP).map(renderAction).join("");
+    if (actions.length > ACT_CAP) kids += moreLine(actions.length - ACT_CAP, "action item", s.id);
+  }
+  if (contacts.length){
+    kids += `<div class="kids-head">Contacts</div>` +
+            contacts.slice(0, CON_CAP).map(renderContact).join("");
+    if (contacts.length > CON_CAP) kids += moreLine(contacts.length - CON_CAP, "contact", s.id);
+  }
   const hasKids = actions.length + contacts.length > 0;
-  const caret = hasKids ? `<span onclick="event.stopPropagation();toggle('${s.id}')">${ICON.caret}</span>` : '<span class="spacer-caret"></span>';
-  return `<div class="step ${prioClass} ${isCol?'collapsed':''}" data-id="${s.id}">
-    <div class="step-head" onclick="toggle('${s.id}')">
+  const caret = hasKids ? `<span class="caret-wrap" onclick="event.stopPropagation();toggle('${s.id}')">${ICON.caret}</span>` : '<span class="spacer-caret"></span>';
+  return `<div class="step ${prioClass} ${isCol?'collapsed':''}${sel}${doneCls}" data-id="${s.id}">
+    <div class="step-head" onclick="select('${s.id}')">
       ${caret}
       ${priorityFlag(s.priority)}
       <span class="sname grow">${esc(s.name)}</span>
@@ -353,8 +530,9 @@ function renderStep(s){
 
 function renderAction(a){
   const done = a.status === "Done";
-  return `<div class="action ${done?'done':''}">
-    <span class="check">${ICON.check}</span>
+  const sel = a.id === selectedId ? " selected" : "";
+  return `<div class="action ${done?'done':''}${sel}" data-id="${a.id}" onclick="select('${a.id}')">
+    <span class="check" onclick="event.stopPropagation();toggleDone('${a.id}')">${ICON.check}</span>
     ${priorityFlag(a.priority)}
     <span class="aname grow">${esc(a.name)}</span>
     ${a.deadline ? `<span class="deadline">${esc(a.deadline)}</span>` : ""}
@@ -362,11 +540,17 @@ function renderAction(a){
 }
 
 function renderContact(c){
-  return `<div class="contact">
+  const sel = c.id === selectedId ? " selected" : "";
+  return `<div class="contact${sel}" data-id="${c.id}" onclick="select('${c.id}')">
     ${ICON.contact}
-    <span class="cname">${esc(c.name)}</span>
-    ${c.notes ? `<span class="cnote">— ${esc(c.notes)}</span>` : ""}
+    <span class="cgrow"><span class="cname">${esc(c.name)}</span>${c.notes ? `<span class="cnote"> — ${esc(c.notes)}</span>` : ""}</span>
   </div>`;
+}
+
+function moreLine(n, noun, stepId){
+  const label = `+${n} more ${noun}${n>1?'s':''}`;
+  return `<div class="more-line" onclick="event.stopPropagation();select('${stepId}')">` +
+         `${label} <span class="more-hint">— open step to see all</span></div>`;
 }
 
 /* ---------- interactions ---------- */
@@ -375,6 +559,317 @@ function expandAll(open){
   collapsed.clear();
   if (!open) for (const it of STATE.items) if (it.type==="Phase"||it.type==="Step") collapsed.add(it.id);
   render();
+}
+
+/* ---------- selection + edit panel ---------- */
+function select(id){
+  const it = STATE.items.find(x=>x.id===id); if (!it) return;
+  if (it.type === "Action" || it.type === "Contact"){
+    // children are edited inside their step's flyout
+    const si = governing(indexOfId(id), "Step");
+    if (si < 0) return;
+    selectedId = STATE.items[si].id; render(); openPanel(selectedId, id);
+  } else {
+    selectedId = id; render(); openPanel(id);
+  }
+}
+
+function toggleDone(id){
+  const it = STATE.items.find(x=>x.id===id); if (!it) return;
+  it.status = it.status === "Done" ? "Not started" : "Done";
+  markDirty(); render();
+}
+
+function fld(label, inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
+function statusSelect(val){
+  return `<select id="f_status">` +
+    STATE.statuses.map(s=>`<option ${s===val?'selected':''}>${esc(s)}</option>`).join("") + `</select>`;
+}
+function prioSelect(val){
+  return `<select id="f_priority">` +
+    STATE.priorities.map(p=>`<option ${p===val?'selected':''}>${esc(p)}</option>`).join("") + `</select>`;
+}
+function tagsField(it){
+  return fld("Tags (comma-separated)", `<input id="f_tags" value="${esc((it.tags||[]).join(', '))}">`);
+}
+function notesField(it, label){
+  return fld(label || "Notes", `<textarea id="f_notes">${esc(it.notes)}</textarea>`);
+}
+
+function buildFields(it){
+  const t = it.type;
+  let h = fld("Name", `<input id="f_name" value="${esc(it.name)}">`);
+  if (t === "Phase"){
+    h += tagsField(it) + notesField(it);
+  } else if (t === "Step"){
+    h += `<div class="fld-row">` +
+         fld("Owner", `<input id="f_owner" value="${esc(it.owner)}">`) +
+         fld("Co-owner", `<input id="f_coowner" value="${esc(it.coowner)}">`) + `</div>`;
+    h += `<div class="fld-row">` +
+         fld("Deadline", `<input type="date" id="f_deadline" value="${esc(it.deadline)}">`) +
+         fld("Status", statusSelect(it.status)) + `</div>`;
+    h += fld("Priority", prioSelect(it.priority)) + tagsField(it) + notesField(it);
+    h += `<div class="kids-edit" id="kids-edit-container">` + childrenSection() + `</div>`;
+  }
+  return h;
+}
+
+/* ---------- step children editor (Action items / Contacts) ---------- */
+function childrenSection(){
+  if (!panelDraft) return "";
+  let h = `<div class="kids-edit-head"><span>Action items</span>` +
+          `<button type="button" class="mini-add" onclick="draftAdd('Action')" title="Add action item">+</button></div>`;
+  h += `<div class="kids-list">`;
+  h += panelDraft.actions.length
+       ? panelDraft.actions.map(actionCard).join("")
+       : `<div class="kids-empty">No action items yet.</div>`;
+  h += `</div>`;
+  h += `<div class="kids-edit-head"><span>Contacts</span>` +
+       `<button type="button" class="mini-add" onclick="draftAdd('Contact')" title="Add contact">+</button></div>`;
+  h += `<div class="kids-list">`;
+  h += panelDraft.contacts.length
+       ? panelDraft.contacts.map(contactCard).join("")
+       : `<div class="kids-empty">No contacts yet.</div>`;
+  h += `</div>`;
+  return h;
+}
+function actionCard(a){
+  const open = panelExpanded.has(a.id);
+  return `<div class="kid-card" data-cid="${a.id}">
+    <div class="kid-row">
+      <input type="checkbox" class="kc-done" ${a.status==='Done'?'checked':''}>
+      <input class="kc-name" value="${esc(a.name)}" placeholder="Action item">
+      <button type="button" class="kc-exp" onclick="draftToggle('${a.id}')" title="More fields">${open?'⌃':'⌄'}</button>
+      <button type="button" class="kc-del" onclick="draftDel('Action','${a.id}')" title="Remove">×</button>
+    </div>
+    ${open ? `<div class="kid-more">
+      <div class="fld-row">
+        <div class="fld"><label>Deadline</label><input type="date" class="kc-deadline" value="${esc(a.deadline)}"></div>
+        <div class="fld"><label>Priority</label><select class="kc-priority">${STATE.priorities.map(p=>`<option ${p===a.priority?'selected':''}>${esc(p)}</option>`).join("")}</select></div>
+      </div>
+      <div class="fld"><label>Notes</label><textarea class="kc-notes">${esc(a.notes)}</textarea></div>
+    </div>` : ``}
+  </div>`;
+}
+function contactCard(c){
+  return `<div class="kid-card" data-cid="${c.id}">
+    <div class="kid-row">
+      <input class="kc-name" value="${esc(c.name)}" placeholder="Name / vendor">
+      <button type="button" class="kc-del" onclick="draftDel('Contact','${c.id}')" title="Remove">×</button>
+    </div>
+    <div class="kid-more">
+      <div class="fld"><label>Notes (role / org · email · phone)</label><textarea class="kc-notes">${esc(c.notes)}</textarea></div>
+    </div>
+  </div>`;
+}
+function draftFind(id){
+  return panelDraft.actions.find(x=>x.id===id) || panelDraft.contacts.find(x=>x.id===id);
+}
+function syncDraftFromDOM(){
+  if (!panelDraft) return;
+  document.querySelectorAll("#panel-body .kid-card").forEach(card=>{
+    const it = draftFind(card.getAttribute("data-cid")); if (!it) return;
+    const q = sel => card.querySelector(sel);
+    const nm = q(".kc-name");     if (nm) it.name = nm.value;
+    const dn = q(".kc-done");     if (dn) it.status = dn.checked ? "Done" : "Not started";
+    const dl = q(".kc-deadline"); if (dl) it.deadline = dl.value;
+    const pr = q(".kc-priority"); if (pr) it.priority = pr.value;
+    const nt = q(".kc-notes");    if (nt) it.notes = nt.value;
+  });
+}
+function refreshChildren(){ document.getElementById("kids-edit-container").innerHTML = childrenSection(); }
+function draftAdd(type){
+  syncDraftFromDOM();
+  const item = newItem(type); item.name = "";
+  (type==="Action" ? panelDraft.actions : panelDraft.contacts).push(item);
+  if (type==="Action") panelExpanded.add(item.id);
+  refreshChildren();
+  const el = document.querySelector(`.kid-card[data-cid="${item.id}"] .kc-name`); if (el) el.focus();
+}
+function draftDel(type, id){
+  syncDraftFromDOM();
+  if (type==="Action") panelDraft.actions = panelDraft.actions.filter(x=>x.id!==id);
+  else panelDraft.contacts = panelDraft.contacts.filter(x=>x.id!==id);
+  panelExpanded.delete(id); refreshChildren();
+}
+function draftToggle(id){
+  syncDraftFromDOM();
+  if (panelExpanded.has(id)) panelExpanded.delete(id); else panelExpanded.add(id);
+  refreshChildren();
+}
+function commitChildren(step){
+  syncDraftFromDOM();
+  const i = indexOfId(step.id), end = blockEnd(i);
+  const kids = [];
+  panelDraft.actions.forEach(a=>{ if ((a.name||"").trim()){ a.name=a.name.trim(); a.type="Action"; kids.push(a); } });
+  panelDraft.contacts.forEach(c=>{ if ((c.name||"").trim()){ c.name=c.name.trim(); c.type="Contact"; kids.push(c); } });
+  STATE.items.splice(i+1, end-(i+1), ...kids);
+}
+
+function openPanel(id, focusChildId){
+  const it = STATE.items.find(x=>x.id===id); if (!it) return;
+  panelDraft = null; panelExpanded = new Set();
+  if (it.type === "Step"){
+    // take a working copy of this step's children so Cancel discards changes
+    const i = indexOfId(id), end = blockEnd(i);
+    panelDraft = { actions: [], contacts: [] };
+    for (let j=i+1; j<end; j++){
+      const c = STATE.items[j];
+      if (c.type === "Action") panelDraft.actions.push({...c});
+      else if (c.type === "Contact") panelDraft.contacts.push({...c});
+    }
+    if (focusChildId) panelExpanded.add(focusChildId);
+  }
+  document.getElementById("panel-type").textContent = it.type;
+  document.getElementById("panel-name").textContent = it.name || "(unnamed)";
+  const ctx = document.getElementById("panel-context");
+  if (it.type === "Step"){
+    const pi = governing(indexOfId(id), "Phase");
+    const phaseName = pi >= 0 ? STATE.items[pi].name : "";
+    ctx.innerHTML = phaseName ? `<span class="ctx-h">Phase</span><span class="ctx-n" title="${esc(phaseName)}">${esc(phaseName)}</span>` : "";
+  } else {
+    ctx.innerHTML = "";
+  }
+  document.getElementById("panel-body").innerHTML = buildFields(it);
+  document.getElementById("panel").classList.add("open");
+  document.getElementById("scrim").classList.add("open");
+  if (!focusChildId){ const first = document.getElementById("f_name"); if (first) first.focus(); }
+}
+function hidePanel(){
+  document.getElementById("panel").classList.remove("open");
+  document.getElementById("scrim").classList.remove("open");
+}
+function closePanel(){
+  if (pendingNewIds.length){
+    // discard a freshly-added, never-saved item (removing a phase also removes its lone step)
+    pendingNewIds.forEach(id=>{ const i=indexOfId(id); if (i>=0) STATE.items.splice(i, blockEnd(i)-i); });
+    pendingNewIds = [];
+  }
+  panelDraft = null; hidePanel(); selectedId = null; render();
+}
+
+function savePanel(){
+  const it = STATE.items.find(x=>x.id===selectedId); if (!it) return;
+  const el = id => document.getElementById(id);
+  if (el("f_name"))     it.name = el("f_name").value.trim();
+  if (el("f_status"))   it.status = el("f_status").value;
+  if (el("f_owner"))    it.owner = el("f_owner").value.trim();
+  if (el("f_coowner"))  it.coowner = el("f_coowner").value.trim();
+  if (el("f_deadline")) it.deadline = el("f_deadline").value;
+  if (el("f_priority")) it.priority = el("f_priority").value;
+  if (el("f_tags"))     it.tags = el("f_tags").value.split(",").map(s=>s.trim()).filter(Boolean);
+  if (el("f_notes"))    it.notes = el("f_notes").value;
+  if (panelDraft) commitChildren(it);
+  pendingNewIds = []; panelDraft = null; markDirty(); hidePanel(); selectedId = null; render();
+}
+
+async function deletePanel(){
+  const it = STATE.items.find(x=>x.id===selectedId); if (!it) return;
+  const sub = (it.type==="Phase"||it.type==="Step") ? " and everything under it" : "";
+  const ok = await uiConfirm(`Delete this ${it.type.toLowerCase()}${sub}?`, "Delete");
+  if (!ok) return;
+  deleteItem(selectedId);
+  pendingNewIds = []; panelDraft = null; markDirty(); hidePanel(); selectedId = null; render();
+}
+
+/* ---------- model mutations (flat, reorder-safe list) ---------- */
+const LV = { Phase:0, Step:1, Action:2, Contact:2 };
+function lvlOf(t){ return LV[t]; }
+function uid(){ return "i" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function indexOfId(id){ return STATE.items.findIndex(x=>x.id===id); }
+function blockEnd(i){ const L = lvlOf(STATE.items[i].type); let j=i+1;
+  while (j<STATE.items.length && lvlOf(STATE.items[j].type) > L) j++; return j; }
+function governing(i, type){ for (let k=i;k>=0;k--) if (STATE.items[k].type===type) return k; return -1; }
+function newItem(type){
+  const names = { Phase:"New phase", Step:"New step", Action:"New action", Contact:"New contact" };
+  return { id:uid(), type, name:names[type], owner:"", coowner:"", deadline:"",
+    status:(type==="Action"||type==="Step") ? "Not started" : "", priority:"Normal", tags:[], notes:"" };
+}
+// New items stay "pending" until Save — Cancel/close discards them (see closePanel).
+function addPhase(){
+  const item = newItem("Phase");
+  pendingNewIds = [item.id];
+  STATE.items.push(item);
+  selectedId = item.id; render(); openPanel(item.id);
+}
+function addStepToPhase(phaseId){
+  const pi = indexOfId(phaseId); if (pi < 0) return;
+  const item = newItem("Step");
+  pendingNewIds = [item.id];
+  STATE.items.splice(blockEnd(pi), 0, item);
+  collapsed.delete(phaseId);   // ensure the phase is open so the new step shows
+  selectedId = item.id; render(); openPanel(item.id);
+}
+function deleteItem(id){
+  const i = indexOfId(id); if (i<0) return;
+  STATE.items.splice(i, blockEnd(i) - i);
+}
+
+/* ---------- document commands (New / Open / Save / Save As) ---------- */
+async function newProject(){
+  if (STATE.dirty){ const ok = await uiConfirm("Discard unsaved changes and start a new project?","Discard"); if (!ok) return; }
+  if (!window.pywebview) return;
+  const r = await pywebview.api.new_project();
+  if (r.ok){ loadInto(r.items, r.filename); toast("New project"); }
+}
+async function openProject(){
+  if (STATE.dirty){ const ok = await uiConfirm("Discard unsaved changes and open another project?","Discard"); if (!ok) return; }
+  if (!window.pywebview) return;
+  const r = await pywebview.api.open_project();
+  if (r.cancelled) return;
+  if (!r.ok){ toast(r.error || "Couldn't open that file."); return; }
+  loadInto(r.items, r.filename);
+  if (r.warn) toast(r.warn);
+}
+async function saveProject(){
+  if (!window.pywebview) return;
+  const r = await pywebview.api.save_project(STATE.items);
+  if (r.cancelled) return;
+  if (!r.ok){ toast(r.error || "Couldn't save."); return; }
+  STATE.filename = r.filename; STATE.dirty = false; updateMeta(); toast("Saved");
+}
+async function saveAs(){
+  if (!window.pywebview) return;
+  const r = await pywebview.api.save_as(STATE.items);
+  if (r.cancelled) return;
+  if (!r.ok){ toast(r.error || "Couldn't save."); return; }
+  STATE.filename = r.filename; STATE.dirty = false; updateMeta(); toast("Saved");
+}
+function loadInto(items, filename){
+  STATE.items = items || []; STATE.filename = filename || ""; STATE.dirty = false;
+  selectedId = null; collapsed.clear(); hidePanel(); render(); updateMeta();
+}
+
+/* ---------- dirty tracking + recovery + meta ---------- */
+function fileLabel(p){ return p ? p.replace(/\\/g,"/").split("/").pop() : ""; }
+function updateMeta(){
+  const base = STATE.filename ? fileLabel(STATE.filename) : "Unsaved project";
+  document.getElementById("meta").textContent = base + (STATE.dirty ? " •" : "");
+}
+function markDirty(){ STATE.dirty = true; updateMeta(); scheduleRecovery(); }
+function scheduleRecovery(){
+  if (!window.pywebview) return;
+  clearTimeout(recoveryTimer);
+  recoveryTimer = setTimeout(()=>{ pywebview.api.write_recovery(STATE.items); }, 800);
+}
+
+/* ---------- reusable confirm + toast ---------- */
+function uiConfirm(msg, okLabel){
+  return new Promise(resolve=>{
+    const scrim = document.getElementById("modal-scrim");
+    document.getElementById("modal-msg").textContent = msg;
+    const ok = document.getElementById("modal-ok"), cancel = document.getElementById("modal-cancel");
+    ok.textContent = okLabel || "OK";
+    scrim.classList.add("open");
+    function done(v){ scrim.classList.remove("open"); ok.onclick = null; cancel.onclick = null; resolve(v); }
+    ok.onclick = ()=>done(true); cancel.onclick = ()=>done(false);
+  });
+}
+let toastTimer = null;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove("show"), 2600);
 }
 
 function applyTheme(theme){
@@ -413,14 +908,26 @@ async function boot(){
     STATE = await pywebview.api.get_state();
   } else {
     // browser preview fallback so layout can be eyeballed without the backend
-    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"1.0.0" };
+    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"1.0.0", filename:"" };
   }
+  STATE.dirty = false;
   applyTheme(STATE.theme || "dark");
   document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.0.0");
-  document.getElementById("meta").textContent = STATE.filename ? STATE.filename : "Unsaved project";
+  updateMeta();
   render();
-  // quiet startup update check
   if (window.pywebview){
+    // offer to restore unsaved work from a previous session
+    const rec = await pywebview.api.check_recovery();
+    if (rec && rec.exists){
+      const ok = await uiConfirm("Unsaved work from a previous session was found. Restore it?","Restore");
+      if (ok){
+        STATE.items = rec.items || []; STATE.filename = rec.filename || "";
+        STATE.dirty = true; collapsed.clear(); render(); updateMeta();
+      } else {
+        await pywebview.api.clear_recovery();
+      }
+    }
+    // quiet startup update check
     const r = await pywebview.api.check_update();
     if (r.update){
       document.getElementById("update-msg").innerHTML =
