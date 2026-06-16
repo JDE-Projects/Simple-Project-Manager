@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simple Project Manager</title>
+<style>
+/* ---- fonts (bundled; never a CDN) ---- */
+@font-face { font-family:"Sora"; src:url("fonts/Sora-Light.ttf"); font-weight:300; }
+@font-face { font-family:"Sora"; src:url("fonts/Sora-Regular.ttf"); font-weight:400; }
+@font-face { font-family:"Sora"; src:url("fonts/Sora-SemiBold.ttf"); font-weight:600; }
+@font-face { font-family:"Sora"; src:url("fonts/Sora-Bold.ttf"); font-weight:700; }
+@font-face { font-family:"JetBrains Mono"; src:url("fonts/JetBrainsMono-Regular.ttf"); font-weight:400; }
+@font-face { font-family:"JetBrains Mono"; src:url("fonts/JetBrainsMono-Medium.ttf"); font-weight:500; }
+@font-face { font-family:"JetBrains Mono"; src:url("fonts/JetBrainsMono-Bold.ttf"); font-weight:700; }
+
+/* ---- JDE Dark Teal tokens ---- */
+:root {
+  --bg:#0a0e14; --bg-2:#0e131c; --panel:#121823; --panel-2:#161d2a;
+  --border:#20293a; --border-2:#2b3650;
+  --text:#dfe7f2; --text-dim:#8a98b0; --text-faint:#5a6678;
+  --accent:#4dd6c1; --accent-2:#2bb6a3; --glow:rgba(77,214,193,0.35);
+  --amber:#f0b860; --red:#ff6b7a; --green:#5ce39b; --blue:#6db3ff; --purple:#b48cff;
+  --btn-text:#042b27;            /* dark text on teal button */
+  --radius:14px; --radius-sm:9px;
+}
+/* ---- JDE Light Teal tokens (opt-in via body.light) ---- */
+body.light {
+  --bg:#eef3f4; --bg-2:#e4ebed; --panel:#ffffff; --panel-2:#f5f9fa;
+  --border:#d3dee1; --border-2:#bcccd0;
+  --text:#16212c; --text-dim:#4f606d; --text-faint:#8593a0;
+  --accent:#178577; --accent-2:#0f6b5f; --glow:rgba(23,133,119,0.20);
+  --amber:#b07d12; --red:#cf3b50; --green:#1c9560; --blue:#2b6fd0; --purple:#6f48cf;
+  --btn-text:#ffffff;            /* white text on the deeper light button */
+}
+
+* { box-sizing:border-box; }
+html, body { height:100%; margin:0; }
+body {
+  font-family:"Sora", system-ui, sans-serif; color:var(--text);
+  background:
+    radial-gradient(900px 500px at 12% -10%, rgba(77,214,193,0.10), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(109,179,255,0.07), transparent 55%),
+    var(--bg);
+  display:flex; flex-direction:column;
+}
+body.light {
+  background:
+    radial-gradient(900px 500px at 12% -10%, rgba(23,133,119,0.08), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(43,111,208,0.06), transparent 55%),
+    var(--bg);
+}
+.mono { font-family:"JetBrains Mono", ui-monospace, monospace; }
+
+/* ---- header ---- */
+header {
+  display:flex; align-items:flex-start; justify-content:space-between;
+  padding:20px 24px 14px; gap:16px;
+}
+.title { font-size:24px; font-weight:700; letter-spacing:.2px; }
+.byline { font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--text-dim); margin-top:3px; }
+.gh-link { font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--accent); cursor:pointer; text-decoration:none; }
+.gh-link:hover { text-decoration:underline; }
+.head-right { display:flex; align-items:center; gap:14px; }
+.meta { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); text-align:right; line-height:1.5; }
+
+/* theme toggle — sun/moon outline */
+.theme-btn {
+  background:transparent; border:1px solid var(--border-2); border-radius:var(--radius-sm);
+  width:36px; height:36px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text-dim); transition:.15s; flex:0 0 auto;
+}
+.theme-btn:hover { border-color:var(--accent); color:var(--accent); transform:translateY(-1px); }
+.theme-btn svg { width:18px; height:18px; }
+.icon-moon { display:none; }
+body.light .icon-sun { display:none; }
+body.light .icon-moon { display:block; }
+
+/* ---- toolbar ---- */
+.toolbar {
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  padding:0 24px 14px;
+}
+.toolbar .sep { width:1px; height:22px; background:var(--border); margin:0 4px; }
+button.btn {
+  font-family:"Sora", sans-serif; font-size:13px; font-weight:500;
+  padding:8px 13px; border-radius:var(--radius-sm); cursor:pointer; transition:.15s;
+  background:var(--panel-2); color:var(--text); border:1px solid var(--border);
+}
+button.btn:hover { border-color:var(--accent); transform:translateY(-1px); }
+button.btn.primary {
+  background:linear-gradient(180deg, var(--accent), var(--accent-2));
+  color:var(--btn-text); border:none; box-shadow:0 2px 10px var(--glow); font-weight:600;
+}
+button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:var(--border); }
+
+/* ---- tree ---- */
+.scroll { flex:1; overflow:auto; padding:4px 24px 72px; }
+.tree { max-width:1080px; margin:0 auto; }
+
+.phase {
+  background:linear-gradient(180deg, var(--panel), var(--bg-2));
+  border:1px solid var(--border); border-radius:var(--radius);
+  margin-bottom:14px; overflow:hidden;
+}
+.phase-head {
+  display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer;
+}
+.phase-head .pname { font-size:16px; font-weight:600; }
+.phase-body { padding:0 14px 12px 14px; }
+
+.caret { width:16px; height:16px; flex:0 0 auto; color:var(--text-dim); transition:transform .15s; }
+.collapsed > .phase-head .caret, .collapsed > .step-head .caret { transform:rotate(-90deg); }
+.collapsed .phase-body, .collapsed .step-body { display:none; }
+
+/* step card: raised surface with a 3px left bar */
+.step {
+  position:relative; background:var(--panel-2); border:1px solid var(--border);
+  border-radius:var(--radius-sm); margin:8px 0; overflow:hidden;
+}
+.step::before {
+  content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--border-2);
+}
+.step.prio-high::before { background:var(--amber); }
+.step.prio-critical::before { background:var(--red); }
+.step-head { display:flex; align-items:center; gap:10px; padding:11px 14px 11px 16px; cursor:pointer; }
+.step-head .sname { font-weight:500; }
+.spacer-caret { width:16px; flex:0 0 auto; }
+.step-body { padding:2px 14px 10px 38px; }
+
+.grow { flex:1; min-width:0; }
+.row-meta { display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+
+/* status pill */
+.pill {
+  font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px;
+  border:1px solid transparent; white-space:nowrap;
+}
+.st-notstarted { color:var(--text-dim); border-color:var(--border-2); }
+.st-inprogress { color:var(--blue);  background:color-mix(in srgb, var(--blue) 15%, transparent); }
+.st-done       { color:var(--green); background:color-mix(in srgb, var(--green) 15%, transparent); }
+.st-blocked    { color:var(--red);   background:color-mix(in srgb, var(--red) 15%, transparent); }
+
+.owner { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-dim); }
+.deadline { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
+
+/* priority flag */
+.flag { width:14px; height:14px; flex:0 0 auto; }
+.flag.high { color:var(--amber); }
+.flag.critical { color:var(--red); }
+
+/* tags */
+.tags { display:flex; gap:5px; flex-wrap:wrap; }
+.tag {
+  font-size:10.5px; padding:2px 8px; border-radius:999px;
+  background:color-mix(in srgb, var(--accent) 16%, transparent);
+  color:var(--accent); font-weight:500;
+}
+
+/* action (checklist) rows */
+.action { display:flex; align-items:center; gap:10px; padding:6px 0; }
+.check {
+  width:17px; height:17px; border-radius:5px; border:1.5px solid var(--border-2);
+  flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:transparent;
+}
+.action.done .check { background:var(--green); border-color:var(--green); color:var(--btn-text); }
+.action.done .aname { color:var(--text-dim); text-decoration:line-through; }
+.aname { font-size:13.5px; }
+
+/* section labels inside a step (separate actions from contacts) */
+.kids-head { font-size:10px; font-weight:600; letter-spacing:.6px; text-transform:uppercase;
+  color:var(--text-faint); margin:9px 0 2px; }
+.kids-head:first-child { margin-top:4px; }
+
+/* contact rows */
+.contact { display:flex; align-items:center; gap:10px; padding:6px 0; color:var(--text-dim); }
+.contact .cname { font-weight:500; color:var(--text); font-size:13.5px; }
+.contact .cnote { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
+.contact-ico { width:15px; height:15px; color:var(--purple); flex:0 0 auto; }
+
+/* ---- bottom bar ---- */
+.bottom-bar {
+  position:fixed; left:0; right:0; bottom:0; height:44px; z-index:50;
+  display:flex; align-items:center; justify-content:space-between; padding:0 18px;
+  background:var(--bg-2); border-top:1px solid var(--border);
+}
+.bottom-bar .left, .bottom-bar .right { display:flex; align-items:center; gap:12px; }
+.tog-wrap { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.tog { position:relative; width:36px; height:20px; display:inline-block; }
+.tog input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+.tog-track { position:absolute; inset:0; border-radius:999px; background:var(--panel-2); border:1px solid var(--border-2); transition:.15s; }
+.tog-thumb { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:999px; background:var(--text-faint); transition:.15s; }
+.tog input:checked ~ .tog-track { background:var(--accent-2); border-color:var(--accent); }
+.tog input:checked ~ .tog-thumb { transform:translateX(16px); background:var(--btn-text); }
+.tog-label { font-size:13px; color:var(--text-dim); }
+.ver-label { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
+.btn-update {
+  font-family:"Sora", sans-serif; font-size:12px; color:var(--text-dim);
+  background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:5px 10px; cursor:pointer; transition:.15s;
+}
+.btn-update:hover { border-color:var(--accent); color:var(--accent); }
+.update-msg { font-size:12px; color:var(--accent); }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="title">Simple Project Manager</div>
+      <div class="byline">by JDE-Projects</div>
+      <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects')">github.com/JDE-Projects</a>
+    </div>
+    <div class="head-right">
+      <div class="meta" id="meta">No project loaded</div>
+      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">
+        <!-- sun: shown in dark mode (click -> light) -->
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>
+        </svg>
+        <!-- moon: shown in light mode (click -> dark) -->
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn primary" disabled title="Arrives in 3b">New</button>
+    <button class="btn" disabled title="Arrives in 3b">Open…</button>
+    <button class="btn" disabled title="Arrives in 3b">Save</button>
+    <button class="btn" disabled title="Arrives in 3b">Save As…</button>
+    <span class="sep"></span>
+    <button class="btn" disabled title="Arrives in 3b">+ Phase</button>
+    <button class="btn" disabled title="Arrives in 3b">+ Step</button>
+    <button class="btn" disabled title="Arrives in 3b">+ Action</button>
+    <button class="btn" disabled title="Arrives in 3b">+ Contact</button>
+    <span class="sep"></span>
+    <button class="btn" onclick="expandAll(true)">Expand all</button>
+    <button class="btn" onclick="expandAll(false)">Collapse all</button>
+  </div>
+
+  <div class="scroll"><div class="tree" id="tree"></div></div>
+
+  <div class="bottom-bar">
+    <div class="left">
+      <label class="tog-wrap" for="dbg">
+        <span class="tog">
+          <input type="checkbox" id="dbg" onchange="onDebug(this.checked)">
+          <span class="tog-track"></span>
+          <span class="tog-thumb"></span>
+        </span>
+        <span class="tog-label">Debug log</span>
+      </label>
+    </div>
+    <div class="right">
+      <span class="update-msg" id="update-msg"></span>
+      <span class="ver-label" id="ver-bar">v1.0.0</span>
+      <button class="btn-update" onclick="manualUpdate()">Check for updates</button>
+    </div>
+  </div>
+
+<script>
+let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "1.0.0" };
+const collapsed = new Set();   // ids of collapsed phases/steps
+
+/* ---------- icons ---------- */
+const ICON = {
+  caret: '<svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  flag: '<svg class="flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22V4M4 4h13l-2 4 2 4H4"/></svg>',
+  check: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 7"/></svg>',
+  contact: '<svg class="contact-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>'
+};
+
+function esc(s){ return (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- build hierarchy from the flat, reorder-safe item list ---------- */
+function buildTree(items){
+  const phases = [];
+  let phase = null, step = null;
+  for (const it of items){
+    if (it.type === "Phase"){ phase = {...it, steps:[]}; step = null; phases.push(phase); }
+    else if (it.type === "Step"){
+      step = {...it, actions:[], contacts:[]};
+      if (phase) phase.steps.push(step); else { phase = {id:"_orphan", type:"Phase", name:"(ungrouped)", tags:[], steps:[step]}; phases.push(phase); }
+    }
+    else if (it.type === "Action"){ if (step) step.actions.push(it); }
+    else if (it.type === "Contact"){ if (step) step.contacts.push(it); }
+  }
+  return phases;
+}
+
+/* ---------- render ---------- */
+function statusPill(status){
+  if (!status) return "";
+  const key = status.toLowerCase().replace(/\s+/g,"");
+  return `<span class="pill st-${key}">${esc(status)}</span>`;
+}
+function priorityFlag(p){
+  if (p === "High")     return ICON.flag.replace('class="flag"','class="flag high"');
+  if (p === "Critical") return ICON.flag.replace('class="flag"','class="flag critical"');
+  return "";
+}
+function tagsHtml(tags){
+  if (!tags || !tags.length) return "";
+  return `<span class="tags">${tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</span>`;
+}
+
+function render(){
+  const phases = buildTree(STATE.items);
+  const tree = document.getElementById("tree");
+  if (!phases.length){ tree.innerHTML = '<div class="deadline" style="padding:24px">No items yet.</div>'; return; }
+  tree.innerHTML = phases.map(renderPhase).join("");
+}
+
+function renderPhase(p){
+  const isCol = collapsed.has(p.id);
+  return `<div class="phase ${isCol?'collapsed':''}" data-id="${p.id}">
+    <div class="phase-head" onclick="toggle('${p.id}')">
+      ${ICON.caret}
+      <span class="pname grow">${esc(p.name)}</span>
+      ${tagsHtml(p.tags)}
+    </div>
+    <div class="phase-body">${p.steps.map(renderStep).join("")}</div>
+  </div>`;
+}
+
+function renderStep(s){
+  const isCol = collapsed.has(s.id);
+  const prioClass = s.priority === "Critical" ? "prio-critical" : (s.priority === "High" ? "prio-high" : "");
+  const actions = s.actions || [], contacts = s.contacts || [];
+  let kids = "";
+  if (actions.length)  kids += `<div class="kids-head">Action items</div>` + actions.map(renderAction).join("");
+  if (contacts.length) kids += `<div class="kids-head">Contacts</div>` + contacts.map(renderContact).join("");
+  const hasKids = actions.length + contacts.length > 0;
+  const caret = hasKids ? `<span onclick="event.stopPropagation();toggle('${s.id}')">${ICON.caret}</span>` : '<span class="spacer-caret"></span>';
+  return `<div class="step ${prioClass} ${isCol?'collapsed':''}" data-id="${s.id}">
+    <div class="step-head" onclick="toggle('${s.id}')">
+      ${caret}
+      ${priorityFlag(s.priority)}
+      <span class="sname grow">${esc(s.name)}</span>
+      <span class="row-meta">
+        ${s.owner ? `<span class="owner">@${esc(s.owner)}</span>` : ""}
+        ${s.deadline ? `<span class="deadline">${esc(s.deadline)}</span>` : ""}
+        ${tagsHtml(s.tags)}
+        ${statusPill(s.status)}
+      </span>
+    </div>
+    <div class="step-body">${kids}</div>
+  </div>`;
+}
+
+function renderAction(a){
+  const done = a.status === "Done";
+  return `<div class="action ${done?'done':''}">
+    <span class="check">${ICON.check}</span>
+    ${priorityFlag(a.priority)}
+    <span class="aname grow">${esc(a.name)}</span>
+    ${a.deadline ? `<span class="deadline">${esc(a.deadline)}</span>` : ""}
+  </div>`;
+}
+
+function renderContact(c){
+  return `<div class="contact">
+    ${ICON.contact}
+    <span class="cname">${esc(c.name)}</span>
+    ${c.notes ? `<span class="cnote">— ${esc(c.notes)}</span>` : ""}
+  </div>`;
+}
+
+/* ---------- interactions ---------- */
+function toggle(id){ if (collapsed.has(id)) collapsed.delete(id); else collapsed.add(id); render(); }
+function expandAll(open){
+  collapsed.clear();
+  if (!open) for (const it of STATE.items) if (it.type==="Phase"||it.type==="Step") collapsed.add(it.id);
+  render();
+}
+
+function applyTheme(theme){
+  STATE.theme = theme;
+  document.body.classList.toggle("light", theme === "light");
+}
+async function toggleTheme(){
+  const next = STATE.theme === "light" ? "dark" : "light";
+  applyTheme(next);
+  if (window.pywebview) await pywebview.api.save_theme(next);
+}
+
+function openUrl(u){ if (window.pywebview) pywebview.api.open_url(u); }
+async function onDebug(on){ if (window.pywebview) await pywebview.api.set_debug(on); }
+
+async function manualUpdate(){
+  const msg = document.getElementById("update-msg");
+  msg.textContent = "Checking…";
+  if (!window.pywebview){ msg.textContent = ""; return; }
+  const r = await pywebview.api.check_update();
+  if (r.update){
+    msg.innerHTML = `Update available: v${esc(r.latest)} ` +
+      `<a class="gh-link" onclick="openUrl('${r.url}')">download</a>`;
+  } else if (r.latest){
+    msg.textContent = "You're up to date.";
+    setTimeout(()=>msg.textContent="", 4000);
+  } else {
+    msg.textContent = "Couldn't reach GitHub.";
+    setTimeout(()=>msg.textContent="", 4000);
+  }
+}
+
+/* ---------- boot ---------- */
+async function boot(){
+  if (window.pywebview){
+    STATE = await pywebview.api.get_state();
+  } else {
+    // browser preview fallback so layout can be eyeballed without the backend
+    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"1.0.0" };
+  }
+  applyTheme(STATE.theme || "dark");
+  document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.0.0");
+  document.getElementById("meta").textContent = STATE.filename ? STATE.filename : "Unsaved project";
+  render();
+  // quiet startup update check
+  if (window.pywebview){
+    const r = await pywebview.api.check_update();
+    if (r.update){
+      document.getElementById("update-msg").innerHTML =
+        `Update available: v${esc(r.latest)} <a class="gh-link" onclick="openUrl('${r.url}')">download</a>`;
+    }
+  }
+}
+window.addEventListener("pywebviewready", boot);
+</script>
+</body>
+</html>
