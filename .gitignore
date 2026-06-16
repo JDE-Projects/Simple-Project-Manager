@@ -1,0 +1,21 @@
+# --- Working notes (local only, not for GitHub) ---
+STATUS.md
+ROADMAP.md
+
+# --- Python ---
+__pycache__/
+*.pyc
+
+# --- PyInstaller build artifacts ---
+build/
+dist/
+*.spec
+
+# --- Local launch / debug ---
+Launch_*.bat
+Debug_Log_*.txt
+
+# --- User project documents & recovery copies (not repo data) ---
+*.xlsx
+~$*.xlsx
+.spm_recovery*.xlsx
