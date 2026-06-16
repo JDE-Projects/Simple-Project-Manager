@@ -17,6 +17,9 @@ dist/
 Launch_*.bat
 Debug_Log_*.txt
 
+# --- Local app preferences (theme choice, etc.) ---
+*.pref
+
 # --- User project documents & recovery copies (not repo data) ---
 *.xlsx
 ~$*.xlsx
