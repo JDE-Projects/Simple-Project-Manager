@@ -1,0 +1,15 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  release:
+    uses: JDE-Projects/Build-Tools/.github/workflows/release.yml@v1
+    permissions:
+      id-token: write
+      attestations: write
+      contents: write
+    with:
+      app_name: SimpleProjectManager
+      dist_subfolder: "Simple Project Manager"
+      python_version: "3.14"

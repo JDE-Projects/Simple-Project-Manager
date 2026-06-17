@@ -12,6 +12,10 @@ rem  The finished app lands in dist\Simple Project Manager\.
 rem ===========================================================================
 cd /d "%~dp0"
 
+rem --- skip interactive pauses when running in CI (GitHub Actions sets CI) ---
+set "PAUSE=pause"
+if defined CI set "PAUSE="
+
 rem --- bind to PySide6 (LGPL), not PyQt6 (GPL) ---
 set QT_API=pyside6
 
@@ -22,7 +26,7 @@ if not %errorlevel%==0 (
     echo Install Python 3 from https://www.python.org/downloads/ and tick
     echo "Add python.exe to PATH" during setup.
     echo.
-    pause
+    %PAUSE%
     exit /b 1
 )
 
@@ -47,7 +51,7 @@ if not %errorlevel%==0 (
     if not %errorlevel%==0 (
         echo Could not install PyInstaller. Check pip/network and try again.
         echo.
-        pause
+        %PAUSE%
         exit /b 1
     )
 )
@@ -58,7 +62,7 @@ python -m pip install pywebview PySide6 qtpy openpyxl
 if not %errorlevel%==0 (
     echo Could not install pywebview / PySide6 / qtpy / openpyxl. Check pip/network and try again.
     echo.
-    pause
+    %PAUSE%
     exit /b 1
 )
 
@@ -87,7 +91,7 @@ if not %errorlevel%==0 (
     echo.
     echo Build failed. Read the last lines above for the cause.
     echo.
-    pause
+    %PAUSE%
     exit /b 1
 )
 
@@ -98,4 +102,4 @@ echo  Run dist\Simple Project Manager\Simple Project Manager.exe to test, then
 echo  zip the whole "Simple Project Manager" folder and attach it to Releases.
 echo ===========================================================================
 echo.
-pause
+%PAUSE%
