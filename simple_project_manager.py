@@ -12,6 +12,8 @@ import json
 import os
 import sys
 import datetime
+import threading
+import time
 import urllib.request
 
 import webview
@@ -63,72 +65,6 @@ def app_dir() -> str:
     return os.path.dirname(os.path.abspath(__file__))
 
 
-def _item(id, type, name, owner="", coowner="", deadline="", status="",
-          priority="Normal", tags=None, notes=""):
-    return {"id": id, "type": type, "name": name, "owner": owner, "coowner": coowner,
-            "deadline": deadline, "status": status, "priority": priority,
-            "tags": tags or [], "notes": notes}
-
-
-def _sample_items():
-    """Seed data for testing — 3 phases of varying size, one step over the 3/2 cap.
-
-    NOTE: this rich sample is for the testing phase. Before release we'll decide
-    what a fresh launch shows (likely an empty 'New / Open' state).
-    """
-    return [
-        # --- Phase 1: a busy phase, with a step that overflows the tree preview ---
-        _item("p1", "Phase", "Network refresh — Building A", tags=["infra"],
-              notes="FY26 capital project."),
-        _item("s1", "Step", "Site survey & cabling audit", owner="John",
-              deadline="2026-06-30", status="In progress", tags=["survey"],
-              notes="Confirm riser capacity before ordering."),
-        _item("a1", "Action", "Photograph each IDF", status="Done"),
-        _item("a2", "Action", "Label patch panels", status="Not started"),
-        _item("a3", "Action", "Test fiber runs", status="Not started",
-              priority="High", deadline="2026-06-25"),
-        _item("a4", "Action", "Update IDF floor map", status="Done"),
-        _item("a5", "Action", "Get survey sign-off", status="Not started"),
-        _item("c1", "Contact", "Acme Cabling", notes="Vendor — j.doe@acme.com / 555-0142"),
-        _item("c2", "Contact", "Globex Networks", notes="Fiber contractor — ops@globex.com"),
-        _item("c3", "Contact", "Initech Comms", notes="Backup vendor — 555-0199"),
-        _item("s2", "Step", "Order switches", owner="Priya", coowner="John",
-              deadline="2026-06-10", status="Blocked", priority="Critical",
-              tags=["procurement"], notes="Waiting on PO approval — overdue."),
-        _item("s3", "Step", "Rack & stack", owner="John", deadline="2026-07-05",
-              status="Not started", priority="High", tags=["install"],
-              notes="After delivery confirmed."),
-        _item("a6", "Action", "Mount switches", status="Not started"),
-        _item("a7", "Action", "Cable management", status="Not started"),
-
-        # --- Phase 2: medium phase ---
-        _item("p2", "Phase", "Server migration", tags=["migration"]),
-        _item("s4", "Step", "Inventory current VMs", owner="Priya",
-              deadline="2026-06-20", status="Done", tags=["audit"]),
-        _item("a8", "Action", "Export VM list", status="Done"),
-        _item("a9", "Action", "Tag critical workloads", status="Done"),
-        _item("s5", "Step", "Migrate file server", owner="John",
-              deadline="2026-07-01", status="In progress", priority="High",
-              tags=["storage"], notes="Largest data set — stage over a weekend."),
-        _item("a10", "Action", "Copy shares", status="Not started"),
-        _item("a11", "Action", "Verify permissions", status="Not started"),
-        _item("a12", "Action", "Cut over DNS", status="Not started", priority="High"),
-        _item("c4", "Contact", "Vendor support", notes="Storage support — case #4471"),
-        _item("s6", "Step", "Decommission old hardware", deadline="2026-07-20",
-              status="Not started"),
-
-        # --- Phase 3: light phase ---
-        _item("p3", "Phase", "Cutover"),
-        _item("s7", "Step", "Maintenance window cutover", owner="John",
-              deadline="2026-07-15", status="Not started", priority="High",
-              tags=["change"], notes="After-hours."),
-        _item("a13", "Action", "Notify stakeholders", status="Not started"),
-        _item("s8", "Step", "Post-cutover validation", owner="Priya",
-              deadline="2026-07-16", status="Not started"),
-        _item("c5", "Contact", "NOC on-call", notes="24/7 desk — 555-0100"),
-    ]
-
-
 class Api:
     """Bridge exposed to the UI. Methods return JSON-able values; the UI awaits."""
 
@@ -149,7 +85,7 @@ class Api:
             "theme": self._load_theme(),
             "statuses": STATUSES,
             "priorities": PRIORITIES,
-            "items": _sample_items(),
+            "items": [],
             "filename": "",
         }
 
@@ -485,15 +421,37 @@ class Api:
             pass
 
 
+# Splash close: honor a 5s minimum so it doesn't just flash, but never
+# hang past 30s. Whichever of (window ready after the floor) / (watchdog)
+# fires first wins; the rest are no-ops. In source/dev runs pyi_splash is
+# absent, so all of this does nothing.
+_splash = {"closed": False, "start": time.monotonic()}
+
 def _close_splash():
+    if _splash["closed"]:
+        return
+    _splash["closed"] = True
     try:
         import pyi_splash  # only present in the frozen build
         pyi_splash.close()
     except Exception:
         pass
 
+def _on_window_ready():
+    elapsed = time.monotonic() - _splash["start"]
+    if elapsed >= 5:
+        _close_splash()
+    else:
+        threading.Timer(5 - elapsed, _close_splash).start()
+
 
 def main():
+    if sys.platform == "win32":
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            "JDEProjects.SimpleProjectManager"
+        )
+
     api = Api()
     win = webview.create_window(
         "Simple Project Manager",
@@ -503,7 +461,8 @@ def main():
         background_color="#0a0e14",
     )
     api.set_window(win)
-    win.events.loaded += _close_splash
+    win.events.loaded += _on_window_ready
+    threading.Timer(30, _close_splash).start()  # ceiling: never hang
     try:
         webview.start(gui="qt", icon=resource_path("simple_project_manager.png"))
     except TypeError:
