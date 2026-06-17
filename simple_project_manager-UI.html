@@ -96,6 +96,41 @@ button.btn.primary {
 }
 button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:var(--border); }
 
+/* ---- filter bar ---- */
+.filterbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:0 24px 14px; }
+.fb-label { font-size:11px; letter-spacing:.5px; text-transform:uppercase; color:var(--text-faint); }
+.filterbar select, .filterbar input {
+  font-family:"Sora", sans-serif; font-size:12.5px; color:var(--text);
+  background:var(--panel-2); border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:6px 9px; outline:none; transition:.15s;
+}
+.filterbar select:focus, .filterbar input:focus { border-color:var(--accent); }
+.filterbar input { width:170px; }
+.fb-clear { font-family:"Sora", sans-serif; font-size:12px; color:var(--text-dim);
+  background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:6px 11px; cursor:pointer; transition:.15s; }
+.fb-clear:hover { border-color:var(--accent); color:var(--accent); }
+.fb-count { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); margin-left:2px; }
+
+/* ---- critical-items summary ---- */
+#crit-summary { max-width:1080px; margin:0 auto; }
+.crit { border:1px solid color-mix(in srgb, var(--red) 40%, var(--border));
+  background:color-mix(in srgb, var(--red) 8%, var(--panel)); border-radius:var(--radius);
+  overflow:hidden; margin-bottom:14px; }
+.crit-head { display:flex; align-items:center; gap:9px; padding:11px 14px; cursor:pointer;
+  font-size:13.5px; font-weight:600; color:var(--text); }
+.crit-warn { color:var(--red); }
+.crit-caret .caret { color:var(--red); }
+.crit-caret.col .caret { transform:rotate(-90deg); }
+.crit-list { padding:0 8px 8px; }
+.crit-row { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:7px 8px; border-radius:var(--radius-sm); cursor:pointer; }
+.crit-row:hover { background:color-mix(in srgb, var(--red) 10%, transparent); }
+.crit-name { font-size:13px; color:var(--text); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.crit-kind { font-size:10px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.4px; margin-left:6px; }
+.crit-phase { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint);
+  flex:0 0 auto; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 /* ---- tree ---- */
 .scroll { flex:1; overflow:auto; padding:4px 24px 72px; }
 .tree { max-width:1080px; margin:0 auto; }
@@ -380,7 +415,19 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
     <button class="btn" onclick="expandAll(false)">Collapse all</button>
   </div>
 
-  <div class="scroll"><div class="tree" id="tree"></div></div>
+  <div class="filterbar">
+    <span class="fb-label">Filter</span>
+    <select id="f-status" onchange="setFilter('status', this.value)"></select>
+    <select id="f-priority" onchange="setFilter('priority', this.value)"></select>
+    <input id="f-owner" type="text" placeholder="Owner / co-owner…" oninput="setFilter('owner', this.value)">
+    <button class="fb-clear" onclick="clearFilters()">Clear</button>
+    <span class="fb-count" id="fb-count"></span>
+  </div>
+
+  <div class="scroll">
+    <div id="crit-summary"></div>
+    <div class="tree" id="tree"></div>
+  </div>
 
   <div class="bottom-bar">
     <div class="left">
@@ -442,6 +489,8 @@ let panelDraft = null;         // {actions:[], contacts:[]} working copy for a s
 let panelExpanded = new Set(); // child ids whose detail is expanded in the panel
 const ACT_CAP = 3, CON_CAP = 2; // tree preview caps; overflow opens the step
 let pendingNewIds = [];        // ids added by the toolbar but not yet committed (Cancel discards)
+let filters = { status:"", priority:"", owner:"" };
+let critOpen = true;           // critical-items summary expanded?
 
 /* ---------- icons ---------- */
 const ICON = {
@@ -546,11 +595,23 @@ function render(){
     tree.innerHTML = '<div class="empty-tree">No phases yet — click <b>+ Phase</b> to start.</div>';
   } else {
     const phases = buildTree(STATE.items);
-    tree.innerHTML = phases.map((p,i)=>renderPhase(p, i, phases.length)).join("");
+    const html = phases.map((p,i)=>renderPhase(p, i, phases.length)).join("");
+    tree.innerHTML = html.trim() ? html
+      : '<div class="empty-tree">No steps match the current filters.</div>';
   }
+  renderCriticalSummary();
+  updateFilterCount();
 }
 
 function renderPhase(p, idx, count){
+  const active = filtersActive();
+  let body = "", shown = 0;
+  p.steps.forEach((s,i)=>{
+    if (active && !stepMatches(s)) return;
+    shown++;
+    body += renderStep(s, i, p.steps.length);
+  });
+  if (active && shown === 0) return "";   // hide phases with no matching steps
   const isCol = collapsed.has(p.id);
   const sel = p.id === selectedId ? " selected" : "";
   return `<div class="phase ${isCol?'collapsed':''}${sel}" data-id="${p.id}">
@@ -562,7 +623,7 @@ function renderPhase(p, idx, count){
       ${reorderCtl(p.id, idx===0, idx===count-1)}
       <button class="phase-add-step" onclick="event.stopPropagation();addStepToPhase('${p.id}')">+ Step</button>
     </div>
-    <div class="phase-body">${p.steps.map((s,i)=>renderStep(s, i, p.steps.length)).join("")}</div>
+    <div class="phase-body">${body}</div>
   </div>`;
 }
 
@@ -639,6 +700,72 @@ function expandAll(open){
 // Done steps start collapsed so they recede; the user can still expand them.
 function autoCollapseDone(){
   for (const it of STATE.items) if (it.type === "Step" && it.status === "Done") collapsed.add(it.id);
+}
+
+/* ---------- filters ---------- */
+function filtersActive(){ return !!(filters.status || filters.priority || filters.owner); }
+function stepMatches(s){
+  if (filters.status && s.status !== filters.status) return false;
+  if (filters.priority && s.priority !== filters.priority) return false;
+  if (filters.owner){
+    const q = filters.owner.toLowerCase();
+    if (!(s.owner||"").toLowerCase().includes(q) && !(s.coowner||"").toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
+function setFilter(key, val){ filters[key] = val; render(); }
+function clearFilters(){
+  filters = { status:"", priority:"", owner:"" };
+  ["f-status","f-priority","f-owner"].forEach(id=>{ const e=document.getElementById(id); if (e) e.value=""; });
+  render();
+}
+function initFilterBar(){
+  const st = document.getElementById("f-status");
+  st.innerHTML = `<option value="">Status: all</option>` +
+    (STATE.statuses||[]).map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
+  const pr = document.getElementById("f-priority");
+  pr.innerHTML = `<option value="">Priority: all</option>` +
+    (STATE.priorities||[]).map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
+}
+function updateFilterCount(){
+  const el = document.getElementById("fb-count"); if (!el) return;
+  if (!filtersActive()){ el.textContent = ""; return; }
+  const steps = STATE.items.filter(it=>it.type==="Step");
+  el.textContent = `${steps.filter(stepMatches).length} of ${steps.length} steps`;
+}
+
+/* ---------- critical-items summary ---------- */
+function criticalItems(){
+  // one row per step that is itself Critical or holds any Critical action item
+  const out = [];
+  for (const ph of buildTree(STATE.items)){
+    for (const st of ph.steps){
+      const critActions = (st.actions||[]).filter(a=>a.priority==="Critical").length;
+      if (st.priority==="Critical" || critActions>0){
+        out.push({ id:st.id, name:st.name, phase:ph.name, critActions });
+      }
+    }
+  }
+  return out;
+}
+function toggleCrit(){ critOpen = !critOpen; renderCriticalSummary(); }
+function renderCriticalSummary(){
+  const host = document.getElementById("crit-summary"); if (!host) return;
+  const items = criticalItems();
+  if (!items.length){ host.innerHTML = ""; return; }
+  let html = `<div class="crit"><div class="crit-head" onclick="toggleCrit()">` +
+    `<span class="${critOpen?'crit-caret':'crit-caret col'}">${ICON.caret}</span>` +
+    `<span class="crit-warn">⚠</span> ${items.length} critical item${items.length>1?'s':''}</div>`;
+  if (critOpen){
+    html += `<div class="crit-list">` + items.map(c=>{
+      const hint = c.critActions>0
+        ? `<span class="crit-kind">${c.critActions} critical action${c.critActions>1?'s':''}</span>` : "";
+      return `<div class="crit-row" onclick="select('${c.id}')">` +
+        `<span class="crit-name">${esc(c.name)}${hint}</span>` +
+        `<span class="crit-phase">${esc(c.phase)}</span></div>`;
+    }).join("") + `</div>`;
+  }
+  host.innerHTML = html + `</div>`;
 }
 
 /* ---------- selection + edit panel ---------- */
@@ -964,7 +1091,10 @@ async function saveAs(){
 }
 function loadInto(items, filename){
   STATE.items = items || []; STATE.filename = filename || ""; STATE.dirty = false;
-  selectedId = null; collapsed.clear(); autoCollapseDone(); hidePanel(); render(); updateMeta();
+  selectedId = null; collapsed.clear(); autoCollapseDone();
+  filters = { status:"", priority:"", owner:"" };
+  ["f-status","f-priority","f-owner"].forEach(id=>{ const e=document.getElementById(id); if (e) e.value=""; });
+  hidePanel(); render(); updateMeta();
 }
 
 /* ---------- dirty tracking + recovery + meta ---------- */
@@ -1041,6 +1171,7 @@ async function boot(){
   applyTheme(STATE.theme || "dark");
   document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.0.0");
   updateMeta();
+  initFilterBar();
   autoCollapseDone();
   render();
   if (window.pywebview){
