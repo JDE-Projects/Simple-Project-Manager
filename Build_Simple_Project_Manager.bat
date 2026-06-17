@@ -46,8 +46,8 @@ if not exist "fonts" echo WARNING: fonts folder not found, the window will fall 
 rem --- make sure PyInstaller is available, install if missing ---
 python -m PyInstaller --version >nul 2>&1
 if not %errorlevel%==0 (
-    echo PyInstaller not found. Installing it now...
-    python -m pip install pyinstaller
+    echo PyInstaller not found. Installing pinned dependencies now...
+    python -m pip install -r requirements.txt
     if not %errorlevel%==0 (
         echo Could not install PyInstaller. Check pip/network and try again.
         echo.
@@ -56,11 +56,11 @@ if not %errorlevel%==0 (
     )
 )
 
-rem --- make sure the runtime deps are present (pywebview + PySide6 + qtpy + openpyxl) ---
-echo Ensuring dependencies (pywebview, PySide6, qtpy, openpyxl) are installed ...
-python -m pip install pywebview PySide6 qtpy openpyxl
+rem --- make sure the runtime deps are present (pinned in requirements.txt) ---
+echo Ensuring pinned dependencies from requirements.txt are installed ...
+python -m pip install -r requirements.txt
 if not %errorlevel%==0 (
-    echo Could not install pywebview / PySide6 / qtpy / openpyxl. Check pip/network and try again.
+    echo Could not install dependencies from requirements.txt. Check pip/network and try again.
     echo.
     %PAUSE%
     exit /b 1
