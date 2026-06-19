@@ -4,6 +4,8 @@ A standalone desktop tool to plan, track, and manage IT projects as a nested che
 
 Built by [JDE-Projects](https://github.com/JDE-Projects).
 
+If you enjoyed this project and would like to buy me a coffee, check out my [Ko-fi](https://ko-fi.com/jdeprojects).
+
 ## Highlights
 
 - **Four-level tree.** Phases -> Steps -> Actions (checklist items), with Contacts attached to a step. Each item nests under the nearest parent above it.
