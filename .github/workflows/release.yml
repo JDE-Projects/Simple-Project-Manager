@@ -4,7 +4,7 @@ on:
     tags: ['v*']
 jobs:
   release:
-    uses: JDE-Projects/Build-Tools/.github/workflows/release.yml@5685053b491735d538823f672727e671966471a2 # Build-Tools main
+    uses: JDE-Projects/Build-Tools/.github/workflows/release.yml@8c589bafce3ce777009239610c545fb8e91d8f7f # v1.1.0 installer pipeline
     permissions:
       id-token: write
       attestations: write
@@ -14,3 +14,4 @@ jobs:
       dist_subfolder: "Simple Project Manager"
       python_version: "3.14"
       build_command: "Build_Simple_Project_Manager.bat"
+      app_id: "9c6da3fc-e0ce-4e6f-9119-00efc3e4119f"

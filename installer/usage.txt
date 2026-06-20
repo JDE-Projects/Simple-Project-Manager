@@ -1,0 +1,6 @@
+Getting started: Launch Simple Project Manager, then click + Phase to begin
+building your project as a nested checklist - add Steps inside a phase, and
+Actions and Contacts inside a step. Click any item to set its owner, deadline,
+status and priority; tick actions as you finish them and progress rolls up
+automatically. Use Save to store the project as an ordinary Excel .xlsx file you
+can reopen here or in Excel, and Open to load one back.

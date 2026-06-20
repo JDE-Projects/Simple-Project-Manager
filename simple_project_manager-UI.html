@@ -442,7 +442,7 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
     </div>
     <div class="right">
       <span class="update-msg" id="update-msg"></span>
-      <span class="ver-label" id="ver-bar">v1.0.0</span>
+      <span class="ver-label" id="ver-bar">v1.1.0</span>
       <button class="btn-update" onclick="manualUpdate()">Check for updates</button>
     </div>
   </div>
@@ -481,7 +481,7 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
   <div class="toast" id="toast"></div>
 
 <script>
-let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "1.0.0", filename: "", dirty: false };
+let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "1.1.0", filename: "", dirty: false };
 const collapsed = new Set();   // ids of collapsed phases/steps
 let selectedId = null;         // id of the row whose edit panel is open
 let recoveryTimer = null;
@@ -1165,11 +1165,11 @@ async function boot(){
     STATE = await pywebview.api.get_state();
   } else {
     // browser preview fallback so layout can be eyeballed without the backend
-    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"1.0.0", filename:"" };
+    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"1.1.0", filename:"" };
   }
   STATE.dirty = false;
   applyTheme(STATE.theme || "dark");
-  document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.0.0");
+  document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.1.0");
   updateMeta();
   initFilterBar();
   autoCollapseDone();
