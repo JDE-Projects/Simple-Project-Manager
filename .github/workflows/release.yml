@@ -4,7 +4,7 @@ on:
     tags: ['v*']
 jobs:
   release:
-    uses: JDE-Projects/Build-Tools/.github/workflows/release.yml@8c589bafce3ce777009239610c545fb8e91d8f7f # v1.1.0 installer pipeline
+    uses: JDE-Projects/Build-Tools/.github/workflows/release.yml@eed764c87cfe34d1ff38aa159855e92d43b8cb00 # installer pipeline + empty-folder uninstall fix
     permissions:
       id-token: write
       attestations: write
