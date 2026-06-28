@@ -6,6 +6,12 @@ Built by [JDE-Projects](https://github.com/JDE-Projects).
 
 If you enjoyed this project and would like to buy me a coffee, check out my [Ko-fi](https://ko-fi.com/jdeprojects).
 
+## Preview
+<p align="center">
+  <img src="screenshots/project_manager-light-dark.png" width="900" alt="Simple Project Manager in dark and light themes">
+  <br><em>Dark and light themes</em>
+</p>
+
 ## Highlights
 
 - **Four-level tree.** Phases -> Steps -> Actions (checklist items), with Contacts attached to a step. Each item nests under the nearest parent above it.
