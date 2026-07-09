@@ -85,7 +85,7 @@ Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/`
 
 ## Security and privacy
 
-- Project `.xlsx` files are ordinary Excel workbooks saved wherever you choose. They may list internal hosts, vendors, and contact details, so keep them out of public source control.
+- Project `.xlsx` files are ordinary Excel workbooks saved wherever you choose. They may list internal hosts, vendors, and contact details, so treat them as sensitive and don't share them publicly (in a bug report, forum post, or public repo).
 - Your theme choice is stored in a small local preference file next to the app; it is not part of any project file.
 - The debug log is off by default. When you turn it on, it writes one `Debug_Log_*.txt` next to the app for that run.
 
