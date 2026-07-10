@@ -243,8 +243,12 @@ class Api:
 
     def open_project(self):
         try:
+            dlg = webview.FileDialog.OPEN
+        except AttributeError:  # older pywebview
+            dlg = webview.OPEN_DIALOG
+        try:
             sel = self._window.create_file_dialog(
-                webview.OPEN_DIALOG, allow_multiple=False,
+                dlg, allow_multiple=False,
                 file_types=("Excel workbook (*.xlsx)", "All files (*.*)"))
         except Exception as e:
             self.log(f"Open dialog failed: {e}")
@@ -271,8 +275,12 @@ class Api:
     def save_as(self, items):
         suggested = os.path.basename(self._filename) if self._filename else "project.xlsx"
         try:
+            dlg = webview.FileDialog.SAVE
+        except AttributeError:  # older pywebview
+            dlg = webview.SAVE_DIALOG
+        try:
             sel = self._window.create_file_dialog(
-                webview.SAVE_DIALOG, save_filename=suggested,
+                dlg, save_filename=suggested,
                 file_types=("Excel workbook (*.xlsx)",))
         except Exception as e:
             self.log(f"Save dialog failed: {e}")

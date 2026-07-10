@@ -78,6 +78,14 @@ header {
 body.light .icon-sun { display:none; }
 body.light .icon-moon { display:block; }
 
+/* ---- themed scrollbars (Qt WebEngine is Chromium, so WebKit pseudo-elements apply app-wide) ---- */
+*::-webkit-scrollbar { width:10px; height:10px; }
+*::-webkit-scrollbar-track { background:transparent; }
+*::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:999px; border:2px solid transparent; background-clip:padding-box; }
+*::-webkit-scrollbar-thumb:hover { background:var(--text-faint); background-clip:padding-box; }
+*::-webkit-scrollbar-button { display:none; height:0; width:0; }
+*::-webkit-scrollbar-corner { background:transparent; }
+
 /* ---- toolbar ---- */
 .toolbar {
   display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -132,7 +140,7 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
   flex:0 0 auto; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* ---- tree ---- */
-.scroll { flex:1; overflow:auto; padding:4px 24px 72px; }
+.scroll { flex:1; overflow:auto; padding:4px 24px 24px; }
 .tree { width:100%; }
 .empty-tree { padding:48px 24px; color:var(--text-dim); font-size:14px; text-align:center; }
 .empty-tree b { color:var(--accent); font-weight:600; }
@@ -262,7 +270,7 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 
 /* ---- bottom bar ---- */
 .bottom-bar {
-  position:fixed; left:0; right:0; bottom:0; height:44px; z-index:50;
+  flex:0 0 auto; height:44px;
   display:flex; align-items:center; justify-content:space-between; padding:0 18px;
   background:var(--bg-2); border-top:1px solid var(--border);
 }
