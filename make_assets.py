@@ -45,7 +45,7 @@ def glyph(size, plate=ACCENT):
     stroke = max(2, int(s * 0.028))
     bw = box_w * s
 
-    for cy, tick in zip(rows_y, checked):
+    for cy, tick in zip(rows_y, checked, strict=True):
         y = cy * s
         bx = box_x * s
         # checkbox outline
