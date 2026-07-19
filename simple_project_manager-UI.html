@@ -274,7 +274,8 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
   display:flex; align-items:center; justify-content:space-between; padding:0 18px;
   background:var(--bg-2); border-top:1px solid var(--border);
 }
-.bottom-bar .left, .bottom-bar .right { display:flex; align-items:center; gap:12px; }
+.bottom-bar .left, .bottom-bar .right { display:flex; align-items:center; gap:12px; flex:none; }
+.bottom-bar .center { flex:1; display:flex; align-items:center; justify-content:center; }
 .tog-wrap { display:flex; align-items:center; gap:8px; cursor:pointer; }
 .tog { position:relative; width:36px; height:20px; display:inline-block; }
 .tog input { position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
@@ -448,8 +449,10 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
         <span class="tog-label">Debug log</span>
       </label>
     </div>
-    <div class="right">
+    <div class="center">
       <span class="update-msg" id="update-msg"></span>
+    </div>
+    <div class="right">
       <span class="ver-label" id="ver-bar">v1.1.0</span>
       <button class="btn-update" onclick="manualUpdate()">Check for updates</button>
     </div>
@@ -1159,10 +1162,10 @@ async function manualUpdate(){
     msg.innerHTML = `Update available: v${esc(r.latest)} ` +
       `<a class="gh-link" onclick="openUrl('${r.url}')">download</a>`;
   } else if (r.latest){
-    msg.textContent = "You're up to date.";
+    msg.textContent = `You're on the latest version (v${esc(r.version)})`;
     setTimeout(()=>msg.textContent="", 4000);
   } else {
-    msg.textContent = "Couldn't reach GitHub.";
+    msg.textContent = "Couldn't reach GitHub to check for updates";
     setTimeout(()=>msg.textContent="", 4000);
   }
 }
