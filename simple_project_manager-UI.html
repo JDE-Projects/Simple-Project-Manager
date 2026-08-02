@@ -55,16 +55,34 @@ body.light {
 .mono { font-family:"JetBrains Mono", ui-monospace, monospace; }
 
 /* ---- header ---- */
-header {
+.app-header {
   display:flex; align-items:flex-start; justify-content:space-between;
   padding:20px 24px 14px; gap:16px;
 }
-.title { font-size:24px; font-weight:700; letter-spacing:.2px; }
-.byline { font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--text-dim); margin-top:3px; }
-.gh-link { font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--accent); cursor:pointer; text-decoration:none; }
+.app-header .brand { display:flex; align-items:center; gap:13px; }
+.app-header .app-glyph {
+  width:40px; height:40px; border-radius:11px;
+  flex:0 0 auto; display:block;
+  box-shadow:0 0 24px var(--glow);
+}
+.app-header .title {
+  font-size:18px; font-weight:700; letter-spacing:.2px;
+  color:var(--text); line-height:1.25;
+}
+.app-header .byline {
+  font-family:"JetBrains Mono", monospace; font-size:11.5px;
+  color:var(--text-dim); margin-top:3px;
+}
+.app-header .byline a { color:var(--accent); text-decoration:none; cursor:pointer; }
+.app-header .byline a:hover { text-decoration:underline; }
+.gh-link { color:var(--accent); cursor:pointer; text-decoration:none; }
 .gh-link:hover { text-decoration:underline; }
-.head-right { display:flex; align-items:center; gap:14px; }
-.meta { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); text-align:right; line-height:1.5; }
+.app-header .head-right { display:flex; align-items:center; gap:12px; }
+.app-header .meta {
+  font-family:"JetBrains Mono", monospace; font-size:11px;
+  color:var(--text-faint); text-align:right;
+}
+.app-header .meta:empty { display:none; }
 
 /* theme toggle — sun/moon outline */
 .theme-btn {
@@ -293,7 +311,7 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
   padding:5px 10px; cursor:pointer; transition:.15s;
 }
 .btn-update:hover { border-color:var(--accent); color:var(--accent); }
-.update-msg { font-size:12px; color:var(--accent); }
+.update-msg { font-size:12px; color:var(--accent); transition:opacity .5s ease; }
 
 /* ---- selection ---- */
 .phase-head, .step-head { cursor:pointer; }
@@ -390,11 +408,13 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
 </style>
 </head>
 <body>
-  <header>
-    <div>
-      <div class="title">Simple Project Manager</div>
-      <div class="byline">by JDE-Projects</div>
-      <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects')">github.com/JDE-Projects</a>
+  <header class="app-header">
+    <div class="brand">
+      <img class="app-glyph" src="simple_project_manager.png" alt="">
+      <div>
+        <div class="title">Simple Project Manager</div>
+        <div class="byline">by <a onclick="openUrl('https://github.com/JDE-Projects')">JDE-Projects</a></div>
+      </div>
     </div>
     <div class="head-right">
       <div class="meta" id="meta">No project loaded</div>
@@ -1153,20 +1173,35 @@ async function toggleTheme(){
 function openUrl(u){ if (window.pywebview) pywebview.api.open_url(u); }
 async function onDebug(on){ if (window.pywebview) await pywebview.api.set_debug(on); }
 
+let noticeFadeTimer = null;
+let noticeClearTimer = null;
+function fadeNotice(){
+  const msg = document.getElementById("update-msg");
+  clearTimeout(noticeFadeTimer);
+  clearTimeout(noticeClearTimer);
+  noticeFadeTimer = setTimeout(()=>{
+    msg.style.opacity = "0";
+    noticeClearTimer = setTimeout(()=>{ msg.textContent = ""; msg.style.opacity = "1"; }, 500);
+  }, 5000);
+}
+
 async function manualUpdate(){
   const msg = document.getElementById("update-msg");
+  clearTimeout(noticeFadeTimer);
+  clearTimeout(noticeClearTimer);
+  msg.style.opacity = "1";
+  msg.innerHTML = "";
   msg.textContent = "Checking…";
   if (!window.pywebview){ msg.textContent = ""; return; }
   const r = await pywebview.api.check_update();
   if (r.update){
-    msg.innerHTML = `Update available: v${esc(r.latest)} ` +
-      `<a class="gh-link" onclick="openUrl('${r.url}')">download</a>`;
+    msg.innerHTML = `Update available: <a class="gh-link" onclick="openUrl('${r.url}')">v${esc(r.latest)}</a>`;
   } else if (r.latest){
     msg.textContent = `You're on the latest version (v${esc(r.version)})`;
-    setTimeout(()=>msg.textContent="", 4000);
+    fadeNotice();
   } else {
     msg.textContent = "Couldn't reach GitHub to check for updates";
-    setTimeout(()=>msg.textContent="", 4000);
+    fadeNotice();
   }
 }
 
@@ -1201,7 +1236,7 @@ async function boot(){
     const r = await pywebview.api.check_update();
     if (r.update){
       document.getElementById("update-msg").innerHTML =
-        `Update available: v${esc(r.latest)} <a class="gh-link" onclick="openUrl('${r.url}')">download</a>`;
+        `Update available: <a class="gh-link" onclick="openUrl('${r.url}')">v${esc(r.latest)}</a>`;
     }
   }
 }
