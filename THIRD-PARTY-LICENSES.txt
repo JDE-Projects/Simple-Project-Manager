@@ -12,10 +12,12 @@ JetBrains Mono    OFL-1.1        github.com/JetBrains/JetBrainsMono
 
 # Per-app
 openpyxl          MIT            foss.heptapod.net/openpyxl/openpyxl
+truststore        MIT            github.com/sethmlarson/truststore
 
-# Required font notices
+# Required notices
 Sora            Copyright 2019 The Sora Project Authors
 JetBrains Mono  Copyright 2020 The JetBrains Mono Project Authors
+truststore      Copyright 2022 Seth Michael Larson
 
 # Note
 Simple Project Manager reads and writes .xlsx project files via openpyxl (MIT).

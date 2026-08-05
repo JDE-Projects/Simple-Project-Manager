@@ -85,6 +85,7 @@ python -m PyInstaller --noconfirm --onedir --windowed ^
     --collect-all PySide6 ^
     --collect-all qtpy ^
     --collect-all openpyxl ^
+    --hidden-import truststore ^
     simple_project_manager.py
 
 if not %errorlevel%==0 (

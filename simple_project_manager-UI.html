@@ -509,6 +509,17 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
     </div>
   </div>
 
+  <!-- update check failure modal -->
+  <div class="modal-scrim" id="updateErrModalScrim">
+    <div class="modal">
+      <h3>Couldn't check for updates</h3>
+      <div class="m-msg" id="update-err-msg"></div>
+      <div class="m-foot">
+        <button class="btn" onclick="closeUpdateErrorModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -1185,6 +1196,15 @@ function fadeNotice(){
   }, 5000);
 }
 
+function openUpdateErrorModal(reason){
+  document.getElementById("update-err-msg").textContent = reason;
+  document.getElementById("updateErrModalScrim").classList.add("open");
+}
+
+function closeUpdateErrorModal(){
+  document.getElementById("updateErrModalScrim").classList.remove("open");
+}
+
 async function manualUpdate(){
   const msg = document.getElementById("update-msg");
   clearTimeout(noticeFadeTimer);
@@ -1195,12 +1215,13 @@ async function manualUpdate(){
   if (!window.pywebview){ msg.textContent = ""; return; }
   const r = await pywebview.api.check_update();
   if (r.update){
-    msg.innerHTML = `Update available: <a class="gh-link" onclick="openUrl('${r.url}')">v${esc(r.latest)}</a>`;
-  } else if (r.latest){
-    msg.textContent = `You're on the latest version (v${esc(r.version)})`;
+    msg.innerHTML = `Update available: <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating')">v${esc(r.version)}</a>`;
+  } else if (r.offline){
+    msg.textContent = "Couldn't reach GitHub to check for updates.";
     fadeNotice();
+    openUpdateErrorModal(r.reason || "The app couldn't run the update check.");
   } else {
-    msg.textContent = "Couldn't reach GitHub to check for updates";
+    msg.textContent = `You're on the latest version (v${esc(r.current)})`;
     fadeNotice();
   }
 }
@@ -1236,7 +1257,7 @@ async function boot(){
     const r = await pywebview.api.check_update();
     if (r.update){
       document.getElementById("update-msg").innerHTML =
-        `Update available: <a class="gh-link" onclick="openUrl('${r.url}')">v${esc(r.latest)}</a>`;
+        `Update available: <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating')">v${esc(r.version)}</a>`;
     }
   }
 }
