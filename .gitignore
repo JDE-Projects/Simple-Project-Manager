@@ -14,8 +14,7 @@ build/
 dist/
 *.spec
 
-# --- Local launch / debug ---
-Launch_*.bat
+# --- Local debug ---
 Debug_Log_*.txt
 
 # --- Local app preferences (theme choice, etc.) ---
