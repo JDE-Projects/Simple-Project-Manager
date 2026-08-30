@@ -304,7 +304,7 @@ button.btn:disabled { opacity:.45; cursor:default; transform:none; border-color:
 .tog input:checked ~ .tog-track { background:var(--accent-2); border-color:var(--accent); }
 .tog input:checked ~ .tog-thumb { transform:translate(16px, -50%); background:var(--btn-text); }
 .tog-label { font-size:13px; color:var(--text-dim); }
-.ver-label { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
+#verLabel { font-family:"JetBrains Mono", monospace; font-size:11px; color:var(--text-faint); }
 .btn-update {
   font-family:"Sora", sans-serif; font-size:12px; color:var(--text-dim);
   background:transparent; border:1px solid var(--border); border-radius:var(--radius-sm);
@@ -473,7 +473,7 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
       <span class="update-msg" id="update-msg"></span>
     </div>
     <div class="right">
-      <span class="ver-label" id="ver-bar">v1.3.3</span>
+      <span id="verLabel"></span>
       <button class="btn-update" onclick="manualUpdate()">Check for updates</button>
     </div>
   </div>
@@ -523,7 +523,7 @@ button.btn.danger:hover { border-color:var(--red); transform:translateY(-1px); }
   <div class="toast" id="toast"></div>
 
 <script>
-let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "1.3.3", filename: "", dirty: false };
+let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "", filename: "", dirty: false };
 const collapsed = new Set();   // ids of collapsed phases/steps
 let selectedId = null;         // id of the row whose edit panel is open
 let recoveryTimer = null;
@@ -1232,11 +1232,11 @@ async function boot(){
     STATE = await pywebview.api.get_state();
   } else {
     // browser preview fallback so layout can be eyeballed without the backend
-    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"1.3.3", filename:"" };
+    STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"", filename:"" };
   }
   STATE.dirty = false;
   applyTheme(STATE.theme || "dark");
-  document.getElementById("ver-bar").textContent = "v" + (STATE.version || "1.3.3");
+  document.getElementById("verLabel").textContent = "v" + (STATE.version || "");
   updateMeta();
   initFilterBar();
   autoCollapseDone();
