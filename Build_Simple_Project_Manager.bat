@@ -99,8 +99,7 @@ if not %errorlevel%==0 (
 echo.
 echo ===========================================================================
 echo  Done. Your app folder is:  dist\Simple Project Manager\
-echo  Run dist\Simple Project Manager\Simple Project Manager.exe to test, then
-echo  zip the whole "Simple Project Manager" folder and attach it to Releases.
+echo  Run dist\Simple Project Manager\Simple Project Manager.exe to test.
 echo ===========================================================================
 echo.
 %PAUSE%
