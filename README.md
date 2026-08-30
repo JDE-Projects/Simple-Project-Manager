@@ -2,7 +2,7 @@
 
 A standalone desktop tool to plan, track, and manage IT projects as a nested checklist: Phases hold Steps, Steps hold Actions and Contacts. Every item carries an owner and co-owner, a deadline, a status, a priority, tags, and notes, with progress rolling up automatically. Projects are saved as ordinary Excel `.xlsx` files. The interface is a clean web-style window.
 
-Built by [JDE-Projects](https://github.com/JDE-Projects).
+Built by [JDE-Projects](https://jde-projects.com), home of the Simple X Tools suite.
 
 If you enjoyed this project and would like to buy me a coffee, check out my [Ko-fi](https://ko-fi.com/jdeprojects).
 
@@ -88,6 +88,7 @@ Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/`
 - Project `.xlsx` files are ordinary Excel workbooks saved wherever you choose. They may list internal hosts, vendors, and contact details, so treat them as sensitive and don't share them publicly (in a bug report, forum post, or public repo).
 - Your theme choice is stored in a small local preference file next to the app; it is not part of any project file.
 - The debug log is off by default. When you turn it on, it writes one `Debug_Log_*.txt` next to the app for that run.
+- **Network use.** Other than the job you ask of it, this app makes one automatic network call: a check to GitHub for a newer release (at startup and when you press **Check for updates**), which sends only a version request. It collects and sends no personal data, usage data, or analytics.
 
 ## A note on how this was built
 
