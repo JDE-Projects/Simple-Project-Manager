@@ -26,7 +26,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-APP_VERSION = "1.3.4"
+APP_VERSION = "1.3.5"
 GITHUB_OWNER = "JDE-Projects"
 GITHUB_REPO = "Simple-Project-Manager"
 
