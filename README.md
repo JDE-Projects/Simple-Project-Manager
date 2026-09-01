@@ -70,7 +70,7 @@ If you would rather run or build it yourself, you need:
 - **Python 3** on the machine's PATH.
 - `pip install -r requirements.txt` (pinned versions; includes `pywebview`, `PySide6`, `qtpy`, `openpyxl`, and `pyinstaller`). Keep `PyQt6` uninstalled so PySide6 is the bundled binding.
 
-Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/` folder, `simple_project_manager.ico`, `simple_project_manager.png` and `simple_project_manager-splash.png` together. Then either:
+Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/` folder, `simple_project_manager.ico` and `simple_project_manager.png` together. Then either:
 
 - **Run from source:** `python simple_project_manager.py`
 - **Build the .exe:** double-click `Build_Simple_Project_Manager.bat`, which uses PyInstaller to produce `dist\Simple Project Manager\Simple Project Manager.exe`. Distribute the whole `Simple Project Manager` folder.

@@ -15,8 +15,6 @@ import socket
 import ssl
 import sys
 import datetime
-import threading
-import time
 import urllib.error
 import urllib.request
 import ctypes
@@ -645,30 +643,6 @@ class Api:
             pass
 
 
-# Splash close: honor a 5s minimum so it doesn't just flash, but never
-# hang past 30s. Whichever of (window ready after the floor) / (watchdog)
-# fires first wins; the rest are no-ops. In source/dev runs pyi_splash is
-# absent, so all of this does nothing.
-_splash = {"closed": False, "start": time.monotonic()}
-
-def _close_splash():
-    if _splash["closed"]:
-        return
-    _splash["closed"] = True
-    try:
-        import pyi_splash  # only present in the frozen build
-        pyi_splash.close()
-    except Exception:
-        pass
-
-def _on_window_ready():
-    elapsed = time.monotonic() - _splash["start"]
-    if elapsed >= 5:
-        _close_splash()
-    else:
-        threading.Timer(5 - elapsed, _close_splash).start()
-
-
 _mutex_handle = None   # module-level: must live for the process lifetime
 
 def _acquire_single_instance(mutex_name: str) -> bool:
@@ -764,8 +738,6 @@ def main():
         return True
     win.events.closing += _on_closing
 
-    win.events.loaded += _on_window_ready
-    threading.Timer(30, _close_splash).start()  # ceiling: never hang
     try:
         webview.start(gui="qt", icon=resource_path("simple_project_manager.png"))
     except TypeError:

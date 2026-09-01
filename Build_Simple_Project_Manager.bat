@@ -6,8 +6,7 @@ rem  Double-click to build a windowed "Simple Project Manager" with PyInstaller.
 rem  Closed / noncommercial build, so this uses --onedir (the Qt and other
 rem  bundled libraries stay replaceable). Keep this .bat in the SAME folder as
 rem  simple_project_manager.py, simple_project_manager-UI.html, the fonts folder,
-rem  simple_project_manager.ico, simple_project_manager.png and
-rem  simple_project_manager-splash.png.
+rem  simple_project_manager.ico and simple_project_manager.png.
 rem  The finished app lands in dist\Simple Project Manager\.
 rem ===========================================================================
 cd /d "%~dp0"
@@ -40,7 +39,6 @@ if not exist "simple_project_manager.py" (
 )
 if not exist "simple_project_manager.ico" echo WARNING: simple_project_manager.ico not found, the exe will use the default icon.
 if not exist "simple_project_manager.png" echo WARNING: simple_project_manager.png not found, the taskbar icon may be generic.
-if not exist "simple_project_manager-splash.png" echo WARNING: simple_project_manager-splash.png not found, no splash will show.
 if not exist "fonts" echo WARNING: fonts folder not found, the window will fall back to system fonts.
 
 rem --- make sure PyInstaller is available, install if missing ---
@@ -78,7 +76,6 @@ echo.
 python -m PyInstaller --noconfirm --onedir --windowed ^
     --name "Simple Project Manager" ^
     --icon "simple_project_manager.ico" ^
-    --splash "simple_project_manager-splash.png" ^
     --add-data "simple_project_manager-UI.html;." ^
     --add-data "simple_project_manager.png;." ^
     --add-data "fonts;fonts" ^
