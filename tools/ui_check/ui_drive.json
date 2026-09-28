@@ -1,0 +1,18 @@
+{
+  "entry": "simple_project_manager.py",
+  "mutex": "JDE_SimpleProjectManager_SingleInstance",
+  "window_title": "Simple Project Manager",
+  "page_url_contains": "simple_project_manager-UI.html",
+  "scenarios": {
+    "smoke": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture.py",
+      "timeout_s": 120
+    },
+    "save-error": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture_save_error.py",
+      "timeout_s": 120
+    }
+  }
+}
