@@ -1,6 +1,20 @@
-// ui_drive scenarios for Simple Project Manager. Both begin from a recovery
-// workbook supplied by their fixture, so Save uses its existing filename and
-// never opens a native file dialog.
+// ui_drive scenarios for Simple Project Manager. Each begins from a recovery
+// workbook supplied by its fixture. A scenario that clicks Save restores it
+// first, so Save uses its existing filename and never opens a native file
+// dialog.
+
+const RECOVERY_WARNING = "Couldn't delete the recovery copy, so it may be offered again next launch.";
+
+function toastShows(helpers, text) {
+  return helpers.waitFor(
+    "document.getElementById('toast').classList.contains('show') && " +
+    `document.getElementById('toast').textContent === ${JSON.stringify(text)}`, 10000
+  ).then(() => true).catch(() => false);
+}
+
+function toastText(helpers) {
+  return helpers.evaluate("document.getElementById('toast').textContent");
+}
 
 async function restoreFixture(helpers) {
   const { click, evaluate, waitFor, check } = helpers;
@@ -94,7 +108,58 @@ async function saveError(helpers) {
   await screenshot("save-error-toast");
 }
 
+async function recoveryLockedSave(helpers) {
+  const { click, evaluate, check, screenshot } = helpers;
+  await restoreFixture(helpers);
+
+  await click(".toolbar .btn.primary");
+  check("Save reports the undeletable recovery copy",
+    await toastShows(helpers, `Saved. ${RECOVERY_WARNING}`), await toastText(helpers));
+  check("the save itself still counts", await evaluate("STATE.dirty === false"));
+  await screenshot("recovery-locked-save-toast");
+
+  await click(".toolbar button[onclick=\"newProject()\"]");
+  check("New reports the undeletable recovery copy",
+    await toastShows(helpers, `New project. ${RECOVERY_WARNING}`), await toastText(helpers));
+}
+
+async function recoveryLockedDecline(helpers) {
+  const { click, evaluate, waitFor, check, screenshot } = helpers;
+  await waitFor("document.getElementById('modal-scrim').classList.contains('open')", 10000);
+  await click("#modal-cancel");
+
+  check("declining reports the undeletable recovery copy",
+    await toastShows(helpers, RECOVERY_WARNING), await toastText(helpers));
+  await screenshot("recovery-locked-decline-toast");
+  check("declining leaves no file name and no restored items",
+    await evaluate("STATE.filename === '' && !STATE.items.some(item => item.name === 'Fixture phase')"),
+    await evaluate("JSON.stringify({filename: STATE.filename, items: STATE.items})"));
+
+  // The ordinary message time is 2.6 seconds, and a warning stays up for 6.
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  check("the warning outlasts the ordinary message time",
+    await evaluate("document.getElementById('toast').classList.contains('show')"));
+}
+
+async function recoveryLockedUnreadable(helpers) {
+  const { evaluate, waitFor, check } = helpers;
+  // The message may have faded by the time the driver connects, so this reads
+  // its text, which stays in place after it fades.
+  const reported = await waitFor(
+    `document.getElementById('toast').textContent === ${JSON.stringify(RECOVERY_WARNING)}`, 10000
+  ).then(() => true).catch(() => false);
+  check("an unreadable, undeletable recovery copy is reported", reported, await toastText(helpers));
+  check("no restore is offered for an unreadable copy",
+    await evaluate("!document.getElementById('modal-scrim').classList.contains('open')"));
+}
+
 export default async function scenario(helpers) {
-  if (helpers.fixture && helpers.fixture.mode === "save-error") return saveError(helpers);
-  return smoke(helpers);
+  const scenarios = {
+    "save-error": saveError,
+    "recovery-locked-save": recoveryLockedSave,
+    "recovery-locked-decline": recoveryLockedDecline,
+    "recovery-locked-unreadable": recoveryLockedUnreadable,
+  };
+  const chosen = helpers.fixture && scenarios[helpers.fixture.mode];
+  return (chosen || smoke)(helpers);
 }

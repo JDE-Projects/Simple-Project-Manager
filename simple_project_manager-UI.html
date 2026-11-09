@@ -1106,7 +1106,7 @@ async function newProject(){
   if (STATE.dirty){ const ok = await uiConfirm("Discard unsaved changes and start a new project?","Discard"); if (!ok) return; }
   if (!window.pywebview) return;
   const r = await pywebview.api.new_project();
-  if (r.ok){ loadInto(r.items, r.filename); toast("New project"); }
+  if (r.ok){ loadInto(r.items, r.filename); reportDone(r, "New project"); }
 }
 async function openProject(){
   if (STATE.dirty){ const ok = await uiConfirm("Discard unsaved changes and open another project?","Discard"); if (!ok) return; }
@@ -1115,21 +1115,21 @@ async function openProject(){
   if (r.cancelled) return;
   if (!r.ok){ toast(r.error || "Couldn't open that file."); return; }
   loadInto(r.items, r.filename);
-  if (r.warn) toast(r.warn);
+  reportDone(r);
 }
 async function saveProject(){
   if (!window.pywebview) return;
   const r = await pywebview.api.save_project(STATE.items);
   if (r.cancelled) return;
   if (!r.ok){ toast(r.error || "Couldn't save."); return; }
-  STATE.filename = r.filename; STATE.dirty = false; updateMeta(); toast("Saved");
+  STATE.filename = r.filename; STATE.dirty = false; updateMeta(); reportDone(r, "Saved");
 }
 async function saveAs(){
   if (!window.pywebview) return;
   const r = await pywebview.api.save_as(STATE.items);
   if (r.cancelled) return;
   if (!r.ok){ toast(r.error || "Couldn't save."); return; }
-  STATE.filename = r.filename; STATE.dirty = false; updateMeta(); toast("Saved");
+  STATE.filename = r.filename; STATE.dirty = false; updateMeta(); reportDone(r, "Saved");
 }
 function loadInto(items, filename){
   STATE.items = items || []; STATE.filename = filename || ""; STATE.dirty = false;
@@ -1165,10 +1165,15 @@ function uiConfirm(msg, okLabel){
   });
 }
 let toastTimer = null;
-function toast(msg){
+function toast(msg, ms = 2600){
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
-  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove("show"), 2600);
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove("show"), ms);
+}
+/* A warning stays up longer, and follows the "done" message when there is one. */
+function reportDone(r, doneMsg){
+  if (r.warn) toast(doneMsg ? `${doneMsg}. ${r.warn}` : r.warn, 6000);
+  else if (doneMsg) toast(doneMsg);
 }
 
 function applyTheme(theme){
@@ -1244,13 +1249,14 @@ async function boot(){
   if (window.pywebview){
     // offer to restore unsaved work from a previous session
     const rec = await pywebview.api.check_recovery();
+    if (rec) reportDone(rec);
     if (rec && rec.exists){
       const ok = await uiConfirm("Unsaved work from a previous session was found. Restore it?","Restore");
       if (ok){
         STATE.items = rec.items || []; STATE.filename = rec.filename || "";
         STATE.dirty = true; collapsed.clear(); autoCollapseDone(); render(); updateMeta();
       } else {
-        await pywebview.api.clear_recovery();
+        reportDone(await pywebview.api.clear_recovery());
       }
     }
     // quiet startup update check
