@@ -284,6 +284,10 @@ def _update_error_reason(exc: BaseException) -> str:
     return text
 
 
+RECOVERY_DELETE_WARNING = ("Couldn't delete the recovery copy, "
+                           "so it may be offered again next launch.")
+
+
 class Api:
     """Bridge exposed to the UI. Methods return JSON-able values; the UI awaits."""
 
@@ -456,9 +460,9 @@ class Api:
     # --- document commands (called from the UI) ----------------------------
     def new_project(self):
         self._filename = ""
-        self._clear_recovery()
+        warning = self._clear_recovery()
         self.log("New project")
-        return {"ok": True, "items": [], "filename": ""}
+        return self._with_warning({"ok": True, "items": [], "filename": ""}, warning)
 
     def open_project(self):
         try:
@@ -482,9 +486,10 @@ class Api:
             return {"ok": False,
                     "error": "That file couldn't be opened as a project workbook."}
         self._filename = path
-        self._clear_recovery()
+        warning = self._clear_recovery()
         self.log(f"Opened {path} ({len(items)} rows)")
-        return {"ok": True, "items": items, "filename": path, "warn": warn}
+        return self._with_warning(
+            {"ok": True, "items": items, "filename": path, "warn": warn}, warning)
 
     def save_project(self, items):
         if not self._filename:
@@ -522,9 +527,9 @@ class Api:
             self.log(f"Save failed for {path}: {e}")
             return {"ok": False, "error": "Couldn't save the project file."}
         self._filename = path
-        self._clear_recovery()
+        warning = self._clear_recovery()
         self.log(f"Saved {path}")
-        return {"ok": True, "filename": path}
+        return self._with_warning({"ok": True, "filename": path}, warning)
 
     # --- silent recovery copy of unsaved work ------------------------------
     def _recovery_path(self):
@@ -538,19 +543,29 @@ class Api:
             return {"ok": False}
         return {"ok": True}
 
-    def _clear_recovery(self):
+    def _clear_recovery(self) -> str:
+        """Delete the recovery copy. Returns a message for the user if that failed."""
         try:
             p = self._recovery_path()
             if os.path.exists(p):
                 os.remove(p)
-        except Exception:
-            pass
+        except Exception as e:
+            self.log(f"Recovery delete failed: {type(e).__name__}")
+            return RECOVERY_DELETE_WARNING
+        return ""
+
+    @staticmethod
+    def _with_warning(result, warning):
+        """Add a warning to a bridge result, after any warning it already has."""
+        if warning:
+            result["warn"] = " ".join(filter(None, (result.get("warn"), warning)))
+        return result
 
     def clear_recovery(self):
         """The user declined the restore, so forget the recovered file's path."""
         self._filename = ""
-        self._clear_recovery()
-        return {"ok": True}
+        warning = self._clear_recovery()
+        return self._with_warning({"ok": not warning}, warning)
 
     def check_recovery(self):
         p = self._recovery_path()
@@ -564,8 +579,7 @@ class Api:
                 src = str(wb["_spm"]["B4"].value or "")
         except Exception as e:
             self.log(f"Recovery read failed: {e}")
-            self._clear_recovery()
-            return {"exists": False}
+            return self._with_warning({"exists": False}, self._clear_recovery())
         self._filename = src
         return {"exists": True, "items": items, "filename": src}
 

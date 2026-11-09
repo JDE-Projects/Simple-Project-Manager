@@ -13,6 +13,21 @@
       "script": "tools/ui_check/smoke.js",
       "fixture": "tools/ui_check/fixture_save_error.py",
       "timeout_s": 120
+    },
+    "recovery-locked-save": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture_recovery_locked.py",
+      "timeout_s": 120
+    },
+    "recovery-locked-decline": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture_recovery_locked_decline.py",
+      "timeout_s": 120
+    },
+    "recovery-locked-unreadable": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture_recovery_locked_unreadable.py",
+      "timeout_s": 120
     }
   }
 }
