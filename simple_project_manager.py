@@ -547,6 +547,8 @@ class Api:
             pass
 
     def clear_recovery(self):
+        """The user declined the restore, so forget the recovered file's path."""
+        self._filename = ""
         self._clear_recovery()
         return {"ok": True}
 
