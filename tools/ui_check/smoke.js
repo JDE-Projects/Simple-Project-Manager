@@ -4,6 +4,8 @@
 // dialog.
 
 const RECOVERY_WARNING = "Couldn't delete the recovery copy, so it may be offered again next launch.";
+const RECOVERY_UNREADABLE_KEPT = "Unsaved work from your last session couldn't be read, so it wasn't restored. The unreadable copy was kept as .spm_recovery_unreadable.xlsx in the app's folder.";
+const RECOVERY_UNREADABLE_STUCK = "Unsaved work from your last session couldn't be read, so it wasn't restored. The copy couldn't be moved aside, so this message may appear again next launch, and your next edits or saves may replace or remove it.";
 
 function toastShows(helpers, text) {
   return helpers.waitFor(
@@ -141,16 +143,38 @@ async function recoveryLockedDecline(helpers) {
     await evaluate("document.getElementById('toast').classList.contains('show')"));
 }
 
-async function recoveryLockedUnreadable(helpers) {
-  const { evaluate, waitFor, check } = helpers;
-  // The message may have faded by the time the driver connects, so this reads
-  // its text, which stays in place after it fades.
-  const reported = await waitFor(
-    `document.getElementById('toast').textContent === ${JSON.stringify(RECOVERY_WARNING)}`, 10000
+async function unreadableNotice(helpers, message, label) {
+  const { click, evaluate, waitFor, check, screenshot } = helpers;
+  const shown = await waitFor(
+    "document.getElementById('modal-scrim').classList.contains('open') && " +
+    `document.getElementById('modal-msg').textContent === ${JSON.stringify(message)}`, 10000
   ).then(() => true).catch(() => false);
-  check("an unreadable, undeletable recovery copy is reported", reported, await toastText(helpers));
-  check("no restore is offered for an unreadable copy",
-    await evaluate("!document.getElementById('modal-scrim').classList.contains('open')"));
+  check(`${label} is shown in a pop-up`, shown,
+    await evaluate("document.getElementById('modal-msg').textContent"));
+  check("the pop-up has no Cancel button",
+    await evaluate("getComputedStyle(document.getElementById('modal-cancel')).display === 'none'"));
+  await screenshot(`${label.replace(/\s+/g, "-")}-popup`);
+  await click("#modal-ok");
+  const closed = await waitFor(
+    "!document.getElementById('modal-scrim').classList.contains('open')", 5000
+  ).then(() => true).catch(() => false);
+  check("OK closes the pop-up", closed);
+  check("the message is not also shown as a toast",
+    await evaluate(`document.getElementById('toast').textContent !== ${JSON.stringify(message)}`),
+    await toastText(helpers));
+
+  await evaluate("void uiConfirm('Check', 'OK')");
+  check("an ordinary confirm has Cancel again",
+    await evaluate("getComputedStyle(document.getElementById('modal-cancel')).display !== 'none'"));
+  await click("#modal-cancel");
+}
+
+async function recoveryLockedUnreadable(helpers) {
+  await unreadableNotice(helpers, RECOVERY_UNREADABLE_STUCK, "unreadable copy that cannot be moved");
+}
+
+async function recoveryUnreadable(helpers) {
+  await unreadableNotice(helpers, RECOVERY_UNREADABLE_KEPT, "unreadable copy that was kept");
 }
 
 export default async function scenario(helpers) {
@@ -159,6 +183,7 @@ export default async function scenario(helpers) {
     "recovery-locked-save": recoveryLockedSave,
     "recovery-locked-decline": recoveryLockedDecline,
     "recovery-locked-unreadable": recoveryLockedUnreadable,
+    "recovery-unreadable": recoveryUnreadable,
   };
   const chosen = helpers.fixture && scenarios[helpers.fixture.mode];
   return (chosen || smoke)(helpers);

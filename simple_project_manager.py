@@ -286,6 +286,13 @@ def _update_error_reason(exc: BaseException) -> str:
 
 RECOVERY_DELETE_WARNING = ("Couldn't delete the recovery copy, "
                            "so it may be offered again next launch.")
+RECOVERY_UNREADABLE_KEPT = ("Unsaved work from your last session couldn't be read, "
+                            "so it wasn't restored. The unreadable copy was kept as "
+                            ".spm_recovery_unreadable.xlsx in the app's folder.")
+RECOVERY_UNREADABLE_STUCK = ("Unsaved work from your last session couldn't be read, "
+                             "so it wasn't restored. The copy couldn't be moved aside, "
+                             "so this message may appear again next launch, and your "
+                             "next edits or saves may replace or remove it.")
 
 
 class Api:
@@ -554,6 +561,16 @@ class Api:
             return RECOVERY_DELETE_WARNING
         return ""
 
+    def _set_aside_recovery(self) -> str:
+        """Keep an unreadable recovery copy under a new name. Returns a message for the user."""
+        try:
+            kept = os.path.join(app_dir(), ".spm_recovery_unreadable.xlsx")
+            os.replace(self._recovery_path(), kept)
+        except Exception as e:
+            self.log(f"Recovery set-aside failed: {type(e).__name__}")
+            return RECOVERY_UNREADABLE_STUCK
+        return RECOVERY_UNREADABLE_KEPT
+
     @staticmethod
     def _with_warning(result, warning):
         """Add a warning to a bridge result, after any warning it already has."""
@@ -579,7 +596,7 @@ class Api:
                 src = str(wb["_spm"]["B4"].value or "")
         except Exception as e:
             self.log(f"Recovery read failed: {e}")
-            return self._with_warning({"exists": False}, self._clear_recovery())
+            return {"exists": False, "warn": self._set_aside_recovery()}
         self._filename = src
         return {"exists": True, "items": items, "filename": src}
 

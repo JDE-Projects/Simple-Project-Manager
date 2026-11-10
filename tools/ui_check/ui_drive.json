@@ -28,6 +28,11 @@
       "script": "tools/ui_check/smoke.js",
       "fixture": "tools/ui_check/fixture_recovery_locked_unreadable.py",
       "timeout_s": 120
+    },
+    "recovery-unreadable": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture_recovery_unreadable.py",
+      "timeout_s": 120
     }
   }
 }
