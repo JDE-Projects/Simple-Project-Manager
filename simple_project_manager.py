@@ -14,6 +14,8 @@ import os
 import socket
 import ssl
 import sys
+import tempfile
+import time
 import datetime
 import urllib.error
 import urllib.request
@@ -284,6 +286,14 @@ def _update_error_reason(exc: BaseException) -> str:
     return text
 
 
+SWAP_RETRIES = 5
+SWAP_RETRY_DELAY = 0.1
+
+
+class _FolderRefusedNewFile(Exception):
+    """The target folder would not allow a temporary file."""
+
+
 RECOVERY_DELETE_WARNING = ("Couldn't delete the recovery copy, "
                            "so it may be offered again next launch.")
 RECOVERY_UNREADABLE_KEPT = ("Unsaved work from your last session couldn't be read, "
@@ -419,7 +429,42 @@ class Api:
         meta["A2"], meta["B2"] = "schema", SCHEMA_VERSION
         meta["A3"], meta["B3"] = "tag_colors", json.dumps({})
         meta["A4"], meta["B4"] = "source", source
-        wb.save(path)
+        self._save_workbook_safely(wb, path)
+
+    def _save_workbook_safely(self, wb, path):
+        # Avoids writing over the existing file in place: the workbook goes to a
+        # temporary file in the same folder, which then replaces the target.
+        try:
+            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".",
+                                       prefix=".spm_", suffix=".tmp")
+        except PermissionError as e:
+            raise _FolderRefusedNewFile("folder does not allow new files") from e
+        try:
+            with os.fdopen(fd, "r+b") as f:
+                wb.save(f)
+                f.flush()
+                os.fsync(f.fileno())
+            self._swap_into_place(tmp, path)
+        except Exception:
+            try:
+                os.remove(tmp)
+            except OSError as e:
+                self.log(f"Temporary save file not removed: {type(e).__name__}")
+            raise
+
+    def _swap_into_place(self, tmp, path):
+        retries = 0
+        while True:
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError as e:
+                if retries >= SWAP_RETRIES:
+                    self.log(f"Save swap refused: {type(e).__name__} "
+                             f"winerror={getattr(e, 'winerror', None)}")
+                    raise
+                retries += 1
+                time.sleep(SWAP_RETRY_DELAY)
 
     def _read_xlsx(self, path):
         wb = load_workbook(path, data_only=True)
@@ -526,6 +571,10 @@ class Api:
     def _do_save(self, path, items):
         try:
             self._write_xlsx(path, items)
+        except _FolderRefusedNewFile:
+            self.log("Save refused: folder does not allow new files")
+            return {"ok": False,
+                    "error": "Couldn't save: this folder doesn't allow new files."}
         except PermissionError:
             self.log(f"Save denied (file open in Excel?): {path}")
             return {"ok": False,
