@@ -45,7 +45,7 @@ Simple Project Manager doesn't update itself. The bottom bar has a **Check for u
 - **Installer:** download the new `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs over your current copy and keeps your theme choice.
 - **Portable .zip:** download and extract the new `SimpleProjectManager-vX.Y.Z.zip`. To keep your theme choice, copy `simple_project_manager.pref` from the old folder into the new one.
 
-Your project `.xlsx` files live wherever you saved them and are untouched by an update. The silent recovery copy (`.spm_recovery.xlsx`) is transient and does not need to be carried over. No secrets are stored, so there's nothing else to carry over.
+Your project `.xlsx` files live wherever you saved them and are untouched by an update. The silent recovery copy (`.spm_recovery.xlsx`) is transient and does not need to be carried over. If a recovery copy can't be read at launch, the app tells you and keeps it as `.spm_recovery_unreadable.xlsx` in the app's folder. Only the latest one is kept, so copy it somewhere else if you want to hold on to it, including before an update. No secrets are stored, so there's nothing else to carry over.
 
 ## Verify this download (optional)
 

@@ -1153,12 +1153,13 @@ function scheduleRecovery(){
 }
 
 /* ---------- reusable confirm + toast ---------- */
-function uiConfirm(msg, okLabel){
+function uiConfirm(msg, okLabel, options){
   return new Promise(resolve=>{
     const scrim = document.getElementById("modal-scrim");
     document.getElementById("modal-msg").textContent = msg;
     const ok = document.getElementById("modal-ok"), cancel = document.getElementById("modal-cancel");
     ok.textContent = okLabel || "OK";
+    cancel.style.display = options && options.single ? "none" : "";
     scrim.classList.add("open");
     function done(v){ scrim.classList.remove("open"); ok.onclick = null; cancel.onclick = null; resolve(v); }
     ok.onclick = ()=>done(true); cancel.onclick = ()=>done(false);
@@ -1249,7 +1250,7 @@ async function boot(){
   if (window.pywebview){
     // offer to restore unsaved work from a previous session
     const rec = await pywebview.api.check_recovery();
-    if (rec) reportDone(rec);
+    if (rec && rec.warn) await uiConfirm(rec.warn, "OK", { single: true });
     if (rec && rec.exists){
       const ok = await uiConfirm("Unsaved work from a previous session was found. Restore it?","Restore");
       if (ok){

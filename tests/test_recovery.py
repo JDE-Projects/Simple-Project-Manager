@@ -179,14 +179,74 @@ def test_failed_delete_on_decline_reports_and_still_forgets_the_file(undeletable
     assert api._filename == ""
 
 
-def test_failed_delete_of_unreadable_recovery_copy_reports(undeletable_recovery):
-    undeletable_recovery.write_bytes(b"not a workbook")
+def unreadable_setup(tmp_path, monkeypatch, data=b"not a workbook"):
+    monkeypatch.setattr(spm, "app_dir", lambda: str(tmp_path))
+    recovery = tmp_path / ".spm_recovery.xlsx"
+    recovery.write_bytes(data)
+    return recovery, tmp_path / ".spm_recovery_unreadable.xlsx"
+
+
+def test_unreadable_recovery_is_kept_and_reported(tmp_path, monkeypatch):
+    recovery, kept = unreadable_setup(tmp_path, monkeypatch)
     api = logging_api(FakeWindow())
 
     result = api.check_recovery()
 
     assert result["exists"] is False
-    assert_reported(api, result)
+    assert result["warn"] == spm.RECOVERY_UNREADABLE_KEPT
+    assert any(line.startswith("Recovery read failed") for line in api.logged)
+    assert kept.read_bytes() == b"not a workbook"
+    assert not recovery.exists()
+    assert api._filename == ""
+
+
+def test_kept_unreadable_copy_is_not_offered_again(tmp_path, monkeypatch):
+    unreadable_setup(tmp_path, monkeypatch)
+    api = logging_api(FakeWindow())
+    api.check_recovery()
+
+    assert api.check_recovery() == {"exists": False}
+
+
+def test_new_unreadable_copy_replaces_the_kept_one(tmp_path, monkeypatch):
+    _, kept = unreadable_setup(tmp_path, monkeypatch, b"new bytes")
+    kept.write_bytes(b"older bytes")
+    api = logging_api(FakeWindow())
+
+    api.check_recovery()
+
+    assert kept.read_bytes() == b"new bytes"
+
+
+def test_valid_copy_that_cannot_be_read_is_kept_intact(old_file, tmp_path, monkeypatch):
+    original = (tmp_path / ".spm_recovery.xlsx").read_bytes()
+    api = logging_api(FakeWindow())
+
+    def refuse(path):
+        raise PermissionError("held by another program")
+
+    monkeypatch.setattr(api, "_read_xlsx", refuse)
+
+    result = api.check_recovery()
+
+    assert result["warn"] == spm.RECOVERY_UNREADABLE_KEPT
+    assert (tmp_path / ".spm_recovery_unreadable.xlsx").read_bytes() == original
+
+
+def test_unreadable_copy_that_cannot_be_moved_is_reported(tmp_path, monkeypatch):
+    recovery, _ = unreadable_setup(tmp_path, monkeypatch)
+    api = logging_api(FakeWindow())
+
+    def refuse(src, dst):
+        raise PermissionError("held by another program")
+
+    monkeypatch.setattr(spm.os, "replace", refuse)
+
+    result = api.check_recovery()
+
+    assert result["warn"] == spm.RECOVERY_UNREADABLE_STUCK
+    assert "Recovery set-aside failed: PermissionError" in api.logged
+    assert recovery.read_bytes() == b"not a workbook"
 
 
 def test_successful_delete_reports_nothing(old_file):
