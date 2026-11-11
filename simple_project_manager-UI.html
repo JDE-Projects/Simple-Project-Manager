@@ -527,6 +527,13 @@ let STATE = { items: [], statuses: [], priorities: [], theme: "dark", version: "
 const collapsed = new Set();   // ids of collapsed phases/steps
 let selectedId = null;         // id of the row whose edit panel is open
 let recoveryTimer = null;
+let recoveryGen = 0;
+// Document commands wait on this until boot has finished the recovery check
+// and any prompt it raised.
+let recoveryGateDone = false;
+let recoveryRestoreAccepted = false;
+let resolveRecoveryGate;
+const recoveryGate = new Promise(resolve=>{ resolveRecoveryGate = resolve; });
 let panelDraft = null;         // {actions:[], contacts:[]} working copy for a step panel
 let panelExpanded = new Set(); // child ids whose detail is expanded in the panel
 const ACT_CAP = 3, CON_CAP = 2; // tree preview caps; overflow opens the step
@@ -1103,30 +1110,42 @@ function reorderChildCtl(type, id, isFirst, isLast){
 
 /* ---------- document commands (New / Open / Save / Save As) ---------- */
 async function newProject(){
+  await recoveryGate;
   if (STATE.dirty){ const ok = await uiConfirm("Discard unsaved changes and start a new project?","Discard"); if (!ok) return; }
   if (!window.pywebview) return;
+  clearTimeout(recoveryTimer);
   const r = await pywebview.api.new_project();
+  storeRecoveryGen(r);
   if (r.ok){ loadInto(r.items, r.filename); reportDone(r, "New project"); }
 }
 async function openProject(){
+  await recoveryGate;
   if (STATE.dirty){ const ok = await uiConfirm("Discard unsaved changes and open another project?","Discard"); if (!ok) return; }
   if (!window.pywebview) return;
+  clearTimeout(recoveryTimer);
   const r = await pywebview.api.open_project();
+  storeRecoveryGen(r);
   if (r.cancelled) return;
   if (!r.ok){ toast(r.error || "Couldn't open that file."); return; }
   loadInto(r.items, r.filename);
   reportDone(r);
 }
 async function saveProject(){
+  await recoveryGate;
   if (!window.pywebview) return;
+  clearTimeout(recoveryTimer);
   const r = await pywebview.api.save_project(STATE.items);
+  storeRecoveryGen(r);
   if (r.cancelled) return;
   if (!r.ok){ toast(r.error || "Couldn't save."); return; }
   STATE.filename = r.filename; STATE.dirty = false; updateMeta(); reportDone(r, "Saved");
 }
 async function saveAs(){
+  await recoveryGate;
   if (!window.pywebview) return;
+  clearTimeout(recoveryTimer);
   const r = await pywebview.api.save_as(STATE.items);
+  storeRecoveryGen(r);
   if (r.cancelled) return;
   if (!r.ok){ toast(r.error || "Couldn't save."); return; }
   STATE.filename = r.filename; STATE.dirty = false; updateMeta(); reportDone(r, "Saved");
@@ -1147,9 +1166,12 @@ function updateMeta(){
 }
 function markDirty(){ STATE.dirty = true; updateMeta(); scheduleRecovery(); }
 function scheduleRecovery(){
-  if (!window.pywebview) return;
+  if (!window.pywebview || !recoveryGateDone) return;
   clearTimeout(recoveryTimer);
-  recoveryTimer = setTimeout(()=>{ pywebview.api.write_recovery(STATE.items); }, 800);
+  recoveryTimer = setTimeout(()=>{ pywebview.api.write_recovery(STATE.items, recoveryGen); }, 800);
+}
+function storeRecoveryGen(result){
+  if (result && typeof result.recovery_gen === "number") recoveryGen = result.recovery_gen;
 }
 
 /* ---------- reusable confirm + toast ---------- */
@@ -1240,6 +1262,7 @@ async function boot(){
     // browser preview fallback so layout can be eyeballed without the backend
     STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"", filename:"" };
   }
+  storeRecoveryGen(STATE);
   STATE.dirty = false;
   applyTheme(STATE.theme || "dark");
   document.getElementById("verLabel").textContent = "v" + (STATE.version || "");
@@ -1255,17 +1278,26 @@ async function boot(){
       const ok = await uiConfirm("Unsaved work from a previous session was found. Restore it?","Restore");
       if (ok){
         STATE.items = rec.items || []; STATE.filename = rec.filename || "";
+        recoveryRestoreAccepted = true;
         STATE.dirty = true; collapsed.clear(); autoCollapseDone(); render(); updateMeta();
       } else {
-        reportDone(await pywebview.api.clear_recovery());
+        const cleared = await pywebview.api.clear_recovery();
+        storeRecoveryGen(cleared);
+        reportDone(cleared);
       }
     }
+    recoveryGateDone = true;
+    resolveRecoveryGate();
+    if (STATE.dirty && !recoveryRestoreAccepted) scheduleRecovery();
     // quiet startup update check
     const r = await pywebview.api.check_update();
     if (r.update){
       document.getElementById("update-msg").innerHTML =
         `Update available: <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating')">v${esc(r.version)}</a>`;
     }
+  } else {
+    recoveryGateDone = true;
+    resolveRecoveryGate();
   }
 }
 window.addEventListener("pywebviewready", boot);
