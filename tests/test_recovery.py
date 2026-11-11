@@ -1,5 +1,7 @@
 """What Save does after the launch-time "Restore it?" prompt is answered."""
 
+import threading
+
 import pytest
 
 import simple_project_manager as spm
@@ -80,7 +82,9 @@ def test_declined_restore_save_writes_to_the_chosen_file(old_file, tmp_path):
     api.clear_recovery()
     result = api.save_project([item("Typed after declining")])
 
-    assert result == {"ok": True, "filename": str(chosen)}
+    assert result["ok"] is True
+    assert result["filename"] == str(chosen)
+    assert result["recovery_gen"] > 0
     assert chosen.exists()
     assert old_file.read_bytes() == before
 
@@ -94,8 +98,10 @@ def test_accepted_restore_saves_to_the_source_file_without_a_dialog(old_file):
     second = api.save_project([item("Edited again")])
 
     assert window.dialogs == 0
-    assert first == {"ok": True, "filename": str(old_file)}
-    assert second == {"ok": True, "filename": str(old_file)}
+    assert first["ok"] is True
+    assert first["filename"] == str(old_file)
+    assert second["ok"] is True
+    assert second["filename"] == str(old_file)
     items, _ = api._read_xlsx(str(old_file))
     assert [i["name"] for i in items] == ["Edited again"]
 
@@ -255,3 +261,90 @@ def test_successful_delete_reports_nothing(old_file):
 
     assert "warn" not in api.save_project([item("Fresh save")])
     assert not [line for line in api.logged if "Recovery delete failed" in line]
+
+
+def test_write_with_old_gen_after_clear_is_discarded(old_file, tmp_path):
+    api = launch(FakeWindow())
+    old_gen = api.get_state()["recovery_gen"]
+
+    api.write_recovery([item("Before clear")], old_gen)
+    api.new_project()
+    result = api.write_recovery([item("Stale")], old_gen)
+
+    assert result == {"ok": True, "stale": True}
+    assert not (tmp_path / ".spm_recovery.xlsx").exists()
+
+
+def test_write_with_current_gen_after_clear_writes(old_file, tmp_path):
+    api = launch(FakeWindow())
+
+    result = api.new_project()
+    write = api.write_recovery([item("Current")], result["recovery_gen"])
+
+    assert write == {"ok": True}
+    assert (tmp_path / ".spm_recovery.xlsx").exists()
+
+
+def test_save_result_carries_new_gen(old_file, tmp_path):
+    api = launch(FakeWindow(choice=str(old_file)))
+    before = api.get_state()["recovery_gen"]
+
+    saved = api._do_save(str(old_file), [item("Saved")])
+    cleared = api.clear_recovery()
+    new = api.new_project()
+    opened = api.open_project()
+
+    assert saved["recovery_gen"] > before
+    assert cleared["recovery_gen"] > saved["recovery_gen"]
+    assert new["recovery_gen"] > cleared["recovery_gen"]
+    assert opened["recovery_gen"] > new["recovery_gen"]
+
+
+def test_write_started_before_clear_cannot_survive_it(old_file, tmp_path, monkeypatch):
+    api = launch(FakeWindow())
+    entered = threading.Event()
+    release = threading.Event()
+    real_write = api._write_xlsx
+
+    def blocked_write(path, items, source=""):
+        if path == str(tmp_path / ".spm_recovery.xlsx"):
+            entered.set()
+            assert release.wait(5), "recovery write was not released"
+        return real_write(path, items, source)
+
+    monkeypatch.setattr(api, "_write_xlsx", blocked_write)
+    gen = api.get_state()["recovery_gen"]
+    writer = threading.Thread(target=api.write_recovery, args=([item("Racing")], gen))
+    clearer = threading.Thread(target=api.new_project)
+    writer.start()
+    assert entered.wait(5), "recovery write did not start"
+    clearer.start()
+    # Give the clear time to delete the copy while the write is still blocked,
+    # so the test fails if the two are not made to take turns.
+    clearer.join(0.5)
+    release.set()
+    writer.join(5)
+    clearer.join(5)
+
+    assert not writer.is_alive(), "recovery write thread did not finish"
+    assert not clearer.is_alive(), "recovery clear thread did not finish"
+    assert not (tmp_path / ".spm_recovery.xlsx").exists()
+
+
+def test_failed_delete_still_bumps_gen(undeletable_recovery):
+    api = logging_api(FakeWindow())
+    old_gen = api.get_state()["recovery_gen"]
+
+    result = api.new_project()
+    stale = api.write_recovery([item("Stale")], old_gen)
+
+    assert result["recovery_gen"] > old_gen
+    assert stale == {"ok": True, "stale": True}
+
+
+def test_write_without_gen_still_writes(tmp_path, monkeypatch):
+    monkeypatch.setattr(spm, "app_dir", lambda: str(tmp_path))
+    api = launch(FakeWindow())
+
+    assert api.write_recovery([item("Compatible")]) == {"ok": True}
+    assert (tmp_path / ".spm_recovery.xlsx").exists()

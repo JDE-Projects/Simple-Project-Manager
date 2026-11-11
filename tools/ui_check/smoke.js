@@ -177,6 +177,42 @@ async function recoveryUnreadable(helpers) {
   await unreadableNotice(helpers, RECOVERY_UNREADABLE_KEPT, "unreadable copy that was kept");
 }
 
+async function recoverySlowCheck(helpers) {
+  const { click, evaluate, waitFor, check } = helpers;
+  await waitFor("window.pywebview && pywebview.api && typeof pywebview.api.get_state === 'function'", 10000);
+  const state = await evaluate("pywebview.api.get_state()");
+  check("page and bridge answer", !!state && typeof state.version === "string", JSON.stringify(state));
+  check("restore prompt has not appeared before New", !await evaluate(
+    "document.getElementById('modal-scrim').classList.contains('open')"));
+  await click(".toolbar button[onclick=\"newProject()\"]");
+  const promptShown = await waitFor(
+    "document.getElementById('modal-scrim').classList.contains('open') && " +
+    "document.getElementById('modal-msg').textContent.includes('Restore it?')", 20000
+  ).then(() => true).catch(() => false);
+  check("restore prompt appears after New", promptShown);
+  const earlyToast = await evaluate("document.getElementById('toast').textContent");
+  check("New did not run before the restore prompt", !earlyToast.includes("New project"), earlyToast);
+  if (promptShown) await click("#modal-ok");
+  const restored = await waitFor(
+    "STATE.items.some(item => item.name === 'Fixture phase') && " +
+    "STATE.items.some(item => item.name === 'Fixture step') && " +
+    "document.getElementById('tree').textContent.includes('Fixture phase') && " +
+    "document.getElementById('tree').textContent.includes('Fixture step')", 10000
+  ).then(() => true).catch(() => false);
+  check("restored fixture items show after queued New", restored,
+    await evaluate("JSON.stringify(STATE.items)"));
+  const discardAsked = await waitFor(
+    "document.getElementById('modal-scrim').classList.contains('open') && " +
+    "document.getElementById('modal-msg').textContent.includes('start a new project')", 10000
+  ).then(() => true).catch(() => false);
+  check("queued New runs after the restore and asks to discard it", discardAsked,
+    await evaluate("document.getElementById('modal-msg').textContent"));
+  if (discardAsked) await click("#modal-cancel");
+  const kept = await evaluate(
+    "STATE.items.some(item => item.name === 'Fixture phase') && STATE.dirty");
+  check("cancelling the discard keeps the restored work", kept);
+}
+
 export default async function scenario(helpers) {
   const scenarios = {
     "save-error": saveError,
@@ -184,6 +220,7 @@ export default async function scenario(helpers) {
     "recovery-locked-decline": recoveryLockedDecline,
     "recovery-locked-unreadable": recoveryLockedUnreadable,
     "recovery-unreadable": recoveryUnreadable,
+    "recovery-slow-check": recoverySlowCheck,
   };
   const chosen = helpers.fixture && scenarios[helpers.fixture.mode];
   return (chosen || smoke)(helpers);

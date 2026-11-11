@@ -33,6 +33,11 @@
       "script": "tools/ui_check/smoke.js",
       "fixture": "tools/ui_check/fixture_recovery_unreadable.py",
       "timeout_s": 120
+    },
+    "recovery-slow-check": {
+      "script": "tools/ui_check/smoke.js",
+      "fixture": "tools/ui_check/fixture_recovery_slow.py",
+      "timeout_s": 120
     }
   }
 }

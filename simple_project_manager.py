@@ -17,6 +17,7 @@ import sys
 import tempfile
 import time
 import datetime
+import threading
 import urllib.error
 import urllib.request
 import ctypes
@@ -313,6 +314,8 @@ class Api:
         self._debug = False
         self._debug_path = None
         self._filename = ""
+        self._recovery_lock = threading.Lock()
+        self._recovery_gen = 0
 
     def set_window(self, w):
         self._window = w
@@ -327,6 +330,7 @@ class Api:
             "priorities": PRIORITIES,
             "items": [],
             "filename": "",
+            "recovery_gen": self._recovery_gen,
         }
 
     # --- progress roll-up (auto column; UI shows it richer in 3c) ----------
@@ -514,7 +518,9 @@ class Api:
         self._filename = ""
         warning = self._clear_recovery()
         self.log("New project")
-        return self._with_warning({"ok": True, "items": [], "filename": ""}, warning)
+        return self._with_warning(
+            {"ok": True, "items": [], "filename": "", "recovery_gen": self._recovery_gen},
+            warning)
 
     def open_project(self):
         try:
@@ -541,7 +547,8 @@ class Api:
         warning = self._clear_recovery()
         self.log(f"Opened {path} ({len(items)} rows)")
         return self._with_warning(
-            {"ok": True, "items": items, "filename": path, "warn": warn}, warning)
+            {"ok": True, "items": items, "filename": path, "warn": warn,
+             "recovery_gen": self._recovery_gen}, warning)
 
     def save_project(self, items):
         if not self._filename:
@@ -585,29 +592,35 @@ class Api:
         self._filename = path
         warning = self._clear_recovery()
         self.log(f"Saved {path}")
-        return self._with_warning({"ok": True, "filename": path}, warning)
+        return self._with_warning(
+            {"ok": True, "filename": path, "recovery_gen": self._recovery_gen}, warning)
 
     # --- silent recovery copy of unsaved work ------------------------------
     def _recovery_path(self):
         return os.path.join(app_dir(), ".spm_recovery.xlsx")
 
-    def write_recovery(self, items):
-        try:
-            self._write_xlsx(self._recovery_path(), items, source=self._filename)
-        except Exception as e:
-            self.log(f"Recovery write failed: {e}")
-            return {"ok": False}
+    def write_recovery(self, items, gen=None):
+        with self._recovery_lock:
+            if gen is not None and gen != self._recovery_gen:
+                return {"ok": True, "stale": True}
+            try:
+                self._write_xlsx(self._recovery_path(), items, source=self._filename)
+            except Exception as e:
+                self.log(f"Recovery write failed: {e}")
+                return {"ok": False}
         return {"ok": True}
 
     def _clear_recovery(self) -> str:
         """Delete the recovery copy. Returns a message for the user if that failed."""
-        try:
-            p = self._recovery_path()
-            if os.path.exists(p):
-                os.remove(p)
-        except Exception as e:
-            self.log(f"Recovery delete failed: {type(e).__name__}")
-            return RECOVERY_DELETE_WARNING
+        with self._recovery_lock:
+            self._recovery_gen += 1
+            try:
+                p = self._recovery_path()
+                if os.path.exists(p):
+                    os.remove(p)
+            except Exception as e:
+                self.log(f"Recovery delete failed: {type(e).__name__}")
+                return RECOVERY_DELETE_WARNING
         return ""
 
     def _set_aside_recovery(self) -> str:
@@ -631,7 +644,8 @@ class Api:
         """The user declined the restore, so forget the recovered file's path."""
         self._filename = ""
         warning = self._clear_recovery()
-        return self._with_warning({"ok": not warning}, warning)
+        return self._with_warning(
+            {"ok": not warning, "recovery_gen": self._recovery_gen}, warning)
 
     def check_recovery(self):
         p = self._recovery_path()
