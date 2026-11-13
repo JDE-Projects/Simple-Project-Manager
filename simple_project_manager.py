@@ -19,6 +19,7 @@ import time
 import datetime
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 import ctypes
 import ctypes.wintypes as wintypes
@@ -304,6 +305,20 @@ RECOVERY_UNREADABLE_STUCK = ("Unsaved work from your last session couldn't be re
                              "so it wasn't restored. The copy couldn't be moved aside, "
                              "so this message may appear again next launch, and your "
                              "next edits or saves may replace or remove it.")
+
+ALLOWED_URL_HOST = "jde-projects.com"
+
+
+def _is_allowed_url(url) -> bool:
+    """True only for an https address whose host part is exactly
+    jde-projects.com: no subdomains, ports, user names, or lookalike hosts."""
+    if not isinstance(url, str):
+        return False
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return False
+    return parts.scheme == "https" and parts.netloc == ALLOWED_URL_HOST
 
 
 class Api:
@@ -681,7 +696,12 @@ class Api:
 
     # --- misc bridge helpers ------------------------------------------------
     def open_url(self, url: str):
-        """Open a link in the system browser — never navigate the app window."""
+        """Open a JDE-Projects website link in the system browser, never the
+        app window. Only https addresses on exactly jde-projects.com are
+        opened; anything else is refused and logged."""
+        if not _is_allowed_url(url):
+            self.log("open_url refused: address is not on jde-projects.com")
+            return {"ok": False}
         import webbrowser
         webbrowser.open(url)
         return {"ok": True}

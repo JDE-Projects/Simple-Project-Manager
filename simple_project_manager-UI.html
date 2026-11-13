@@ -1243,7 +1243,7 @@ async function manualUpdate(){
   if (!window.pywebview){ msg.textContent = ""; return; }
   const r = await pywebview.api.check_update();
   if (r.update){
-    msg.innerHTML = `Update available: <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating')">v${esc(r.version)}</a>`;
+    msg.innerHTML = `Update available: <a class="gh-link" href="https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating" target="_blank" rel="noopener">v${esc(r.version)}</a>`;
   } else if (r.offline){
     msg.textContent = "Couldn't reach GitHub to check for updates.";
     fadeNotice();
@@ -1293,7 +1293,7 @@ async function boot(){
     const r = await pywebview.api.check_update();
     if (r.update){
       document.getElementById("update-msg").innerHTML =
-        `Update available: <a class="gh-link" onclick="openUrl('https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating')">v${esc(r.version)}</a>`;
+        `Update available: <a class="gh-link" href="https://github.com/JDE-Projects/Simple-Project-Manager/blob/main/README.md#updating" target="_blank" rel="noopener">v${esc(r.version)}</a>`;
     }
   } else {
     recoveryGateDone = true;
