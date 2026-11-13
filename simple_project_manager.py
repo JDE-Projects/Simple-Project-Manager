@@ -1043,6 +1043,10 @@ def main():
     # are removed before anything else runs.
     strip_remote_debugging(os.environ, sys.argv, getattr(sys, "frozen", False))
 
+    # Stops Qt leaving an empty %LOCALAPPDATA%\<exe name>\cache\qtpipelinecache-*
+    # folder the uninstaller never removes. Must run before the window is created.
+    os.environ.setdefault("QT_DISABLE_SHADER_DISK_CACHE", "1")
+
     # Use the Windows certificate store for TLS instead of the bundled CA list,
     # so antivirus/network filters that inject their own root cert (common on
     # managed laptops) don't break the GitHub update check. Runs before the
