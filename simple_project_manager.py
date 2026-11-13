@@ -26,6 +26,7 @@ import ctypes
 import ctypes.wintypes as wintypes
 
 import webview
+from app.debug_log import DebugLog
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -327,8 +328,11 @@ class Api:
 
     def __init__(self):
         self._window = None
-        self._debug = False
-        self._debug_path = None
+        self._pending_log_warnings = []
+        self._debug_log = DebugLog(
+            app_dir(), "Simple Project Manager", redact=None,
+            on_warning=self._on_debug_log_warning,
+        )
         self._filename = ""
         self._recovery_lock = threading.Lock()
         self._recovery_gen = 0
@@ -339,6 +343,8 @@ class Api:
     # --- document data (stubbed in 3a; real .xlsx I/O in 3b) ---------------
     def get_state(self):
         """Initial payload the UI loads on startup."""
+        log_warnings = self._pending_log_warnings
+        self._pending_log_warnings = []
         return {
             "version": APP_VERSION,
             "theme": self._load_theme(),
@@ -347,6 +353,7 @@ class Api:
             "items": [],
             "filename": "",
             "recovery_gen": self._recovery_gen,
+            "log_warnings": log_warnings,
         }
 
     # --- progress roll-up (auto column; UI shows it richer in 3c) ----------
@@ -742,22 +749,29 @@ class Api:
 
     # --- debug log ----------------------------------------------------------
     def set_debug(self, on: bool):
-        self._debug = bool(on)
-        if self._debug and not self._debug_path:
-            stamp = datetime.datetime.now().strftime("%m%d%Y_%H%M%S")
-            self._debug_path = os.path.join(app_dir(), f"Debug_Log_{stamp}.txt")
-            self.log("Debug log started")
-        return {"ok": True}
+        ok = self._debug_log.set_enabled(on)
+        return {"ok": ok, "enabled": self._debug_log.is_enabled()}
 
     def log(self, msg: str):
-        if not self._debug or not self._debug_path:
+        self._debug_log.log(msg)
+
+    def _on_debug_log_warning(self, message):
+        window = self._window
+        if window is None:
+            self._pending_log_warnings.append(message)
             return
-        try:
-            ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            with open(self._debug_path, "a", encoding="utf-8") as f:
-                f.write(f"[{ts}] {msg}\n")
-        except Exception:
-            pass
+        script = (
+            "window.onDebugLogWarning && window.onDebugLogWarning("
+            f"{json.dumps(message)}, {json.dumps(self._debug_log.is_enabled())})"
+        )
+
+        def _push():
+            try:
+                window.evaluate_js(script)
+            except Exception:
+                pass
+
+        threading.Thread(target=_push, daemon=True).start()
 
 
 _mutex_handle = None   # module-level: must live for the process lifetime
@@ -896,6 +910,7 @@ def main():
         )
 
     api = Api()
+    api._debug_log.prune()
     win = webview.create_window(
         "Simple Project Manager",
         url=resource_path("simple_project_manager-UI.html"),
