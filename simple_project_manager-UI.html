@@ -1210,7 +1210,16 @@ async function toggleTheme(){
 }
 
 function openUrl(u){ if (window.pywebview) pywebview.api.open_url(u); }
-async function onDebug(on){ if (window.pywebview) await pywebview.api.set_debug(on); }
+window.onDebugLogWarning = function(msg, enabled){
+  toast(msg, 6000);
+  document.getElementById("dbg").checked = enabled;
+};
+async function onDebug(on){
+  if (window.pywebview) {
+    const r = await pywebview.api.set_debug(on);
+    if (r.enabled !== on) document.getElementById("dbg").checked = r.enabled;
+  }
+}
 
 let noticeFadeTimer = null;
 let noticeClearTimer = null;
@@ -1258,6 +1267,9 @@ async function manualUpdate(){
 async function boot(){
   if (window.pywebview){
     STATE = await pywebview.api.get_state();
+    if (STATE.log_warnings && STATE.log_warnings.length) {
+      toast(STATE.log_warnings.join(" "), 6000);
+    }
   } else {
     // browser preview fallback so layout can be eyeballed without the backend
     STATE = { items: [], statuses:[], priorities:[], theme:"dark", version:"", filename:"" };
