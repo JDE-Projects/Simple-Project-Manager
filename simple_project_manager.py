@@ -26,7 +26,7 @@ import ctypes
 import ctypes.wintypes as wintypes
 
 import webview
-from app.debug_log import DebugLog
+from app.debug_log import DebugLog, describe_error
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -555,7 +555,7 @@ class Api:
                 dlg, allow_multiple=False,
                 file_types=("Excel workbook (*.xlsx)", "All files (*.*)"))
         except Exception as e:
-            self.log(f"Open dialog failed: {e}")
+            self.log(f"Open dialog failed: {describe_error(e)}")
             return {"ok": False, "error": "Couldn't open the file picker."}
         if not sel:
             return {"cancelled": True}
@@ -563,12 +563,12 @@ class Api:
         try:
             items, warn = self._read_xlsx(path)
         except Exception as e:
-            self.log(f"Open failed for {path}: {e}")
+            self.log(f"Open failed: {describe_error(e)}")
             return {"ok": False,
                     "error": "That file couldn't be opened as a project workbook."}
         self._filename = path
         warning = self._clear_recovery()
-        self.log(f"Opened {path} ({len(items)} rows)")
+        self.log(f"Opened project ({len(items)} rows)")
         return self._with_warning(
             {"ok": True, "items": items, "filename": path, "warn": warn,
              "recovery_gen": self._recovery_gen}, warning)
@@ -589,7 +589,7 @@ class Api:
                 dlg, save_filename=suggested,
                 file_types=("Excel workbook (*.xlsx)",))
         except Exception as e:
-            self.log(f"Save dialog failed: {e}")
+            self.log(f"Save dialog failed: {describe_error(e)}")
             return {"ok": False, "error": "Couldn't open the save dialog."}
         if not sel:
             return {"cancelled": True}
@@ -606,15 +606,15 @@ class Api:
             return {"ok": False,
                     "error": "Couldn't save: this folder doesn't allow new files."}
         except PermissionError:
-            self.log(f"Save denied (file open in Excel?): {path}")
+            self.log("Save denied (file open in Excel?)")
             return {"ok": False,
                     "error": "Couldn't save — is the file open in Excel?"}
         except Exception as e:
-            self.log(f"Save failed for {path}: {e}")
+            self.log(f"Save failed: {describe_error(e)}")
             return {"ok": False, "error": "Couldn't save the project file."}
         self._filename = path
         warning = self._clear_recovery()
-        self.log(f"Saved {path}")
+        self.log(f"Saved project ({len(items)} rows)")
         return self._with_warning(
             {"ok": True, "filename": path, "recovery_gen": self._recovery_gen}, warning)
 
@@ -629,7 +629,7 @@ class Api:
             try:
                 self._write_xlsx(self._recovery_path(), items, source=self._filename)
             except Exception as e:
-                self.log(f"Recovery write failed: {e}")
+                self.log(f"Recovery write failed: {describe_error(e)}")
                 return {"ok": False}
         return {"ok": True}
 
@@ -681,7 +681,7 @@ class Api:
             if "_spm" in wb.sheetnames:
                 src = str(wb["_spm"]["B4"].value or "")
         except Exception as e:
-            self.log(f"Recovery read failed: {e}")
+            self.log(f"Recovery read failed: {describe_error(e)}")
             return {"exists": False, "warn": self._set_aside_recovery()}
         self._filename = src
         return {"exists": True, "items": items, "filename": src}
@@ -732,7 +732,7 @@ class Api:
         except Exception as e:
             result["offline"] = True
             result["reason"] = _update_error_reason(e)
-            self.log(f"check_update failed: {type(e).__name__}: {e}")
+            self.log(f"check_update failed: {describe_error(e)}")
         return result
 
     @staticmethod
@@ -753,6 +753,10 @@ class Api:
         return {"ok": ok, "enabled": self._debug_log.is_enabled()}
 
     def log(self, msg: str):
+        # Users share this log in bug reports, so a line carries only a
+        # built-in action, a count, or an outcome: never a file path, typed
+        # text, or an error's own message (use describe_error(e), not e).
+        # tests/test_log_privacy.py checks every call.
         self._debug_log.log(msg)
 
     def _on_debug_log_warning(self, message):
