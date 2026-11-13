@@ -114,6 +114,12 @@ def test_no_log_call_interpolates_a_path_url_or_raw_error():
     source = Path(spm.__file__).read_text(encoding="utf-8")
     calls = re.findall(r"self\.log\((.*?)\)\s*$", source, flags=re.MULTILINE)
     assert len(calls) > 15
-    banned = re.compile(r"\{(e|path|url|sel|self\._filename|str\(e\))\}")
-    offenders = [call for call in calls if banned.search(call)]
+    # The settings-file helpers log through _log_quietly; their calls span
+    # lines, so they are matched across line breaks.
+    pref_calls = re.findall(r"_log_quietly\(log,(.*?)\)\s*$", source,
+                            flags=re.MULTILINE | re.DOTALL)
+    assert len(pref_calls) >= 4
+    banned = re.compile(r"\{(e|move_error|path|aside|tmp|url|sel|"
+                        r"self\._filename|str\(e\))\}")
+    offenders = [call for call in calls + pref_calls if banned.search(call)]
     assert offenders == []

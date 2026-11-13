@@ -1206,7 +1206,9 @@ function applyTheme(theme){
 async function toggleTheme(){
   const next = STATE.theme === "light" ? "dark" : "light";
   applyTheme(next);
-  if (window.pywebview) await pywebview.api.save_theme(next);
+  if (!window.pywebview) return;
+  const r = await pywebview.api.save_theme(next);
+  if (!r || !r.ok) toast("Couldn't save the theme setting. It will reset next time the app opens.", 6000);
 }
 
 function openUrl(u){ if (window.pywebview) pywebview.api.open_url(u); }
