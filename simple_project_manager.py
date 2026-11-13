@@ -79,26 +79,73 @@ def app_dir() -> str:
 # One JSON file next to the app holds EVERY persisted setting: theme, window
 # geometry, and anything added later. Always read-merge-write through
 # load_prefs / save_prefs. Never overwrite the file with a single key, or the
-# next setting you add silently wipes the others.
+# next setting you add silently wipes the others. Writes go to a temporary
+# file that replaces the settings file only once complete, so a crash mid-write
+# keeps the previous settings. A damaged file is kept aside, not wiped. `log`
+# is an optional callable (Api.log); its lines never carry a path or an error's
+# own message.
 
 def _pref_path() -> str:
     return os.path.join(app_dir(), "simple_project_manager.pref")
 
-def load_prefs() -> dict:
-    """Load the full prefs dict. Tolerant of a missing or corrupt file."""
+def _log_quietly(log, msg: str) -> None:
+    if log is None:
+        return
     try:
-        with open(_pref_path(), "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
+        log(msg)
     except Exception:
+        pass
+
+def load_prefs(log=None) -> dict:
+    """Full prefs dict. Missing file: first run. Damaged file: kept aside, logged."""
+    path = _pref_path()
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except FileNotFoundError:
+        return {}
+    except OSError as e:
+        # Couldn't be read (locked, no access): not damaged, so left in place.
+        _log_quietly(log, f"Settings file not read: {describe_error(e)}")
+        return {}
+    try:
+        data = json.loads(raw.decode("utf-8"))
+        if isinstance(data, dict):
+            return data
+        raise ValueError("prefs root is not an object")
+    except Exception as e:
+        reason = describe_error(e)
+        try:
+            aside = f"{path}.corrupt-{time.strftime('%Y%m%d-%H%M%S')}"
+            os.replace(path, aside)
+            _log_quietly(log, f"Settings file unreadable, kept aside: {reason}")
+        except Exception as move_error:
+            _log_quietly(log, f"Settings file unreadable ({reason}), not kept "
+                              f"aside: {describe_error(move_error)}")
         return {}
 
-def save_prefs(prefs: dict) -> bool:
+def save_prefs(prefs: dict, log=None) -> bool:
+    """Write safely. A False result must surface a visible error, not silence."""
+    path = _pref_path()
     try:
-        with open(_pref_path(), "w", encoding="utf-8") as f:
-            json.dump(prefs, f)
-        return True
-    except Exception:
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path) or ".",
+                                   prefix=".pref_", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(prefs, f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, path)
+            return True
+        except Exception:
+            try:
+                os.remove(tmp)
+            except OSError as e:
+                _log_quietly(log, "Temporary settings file not removed: "
+                                  f"{describe_error(e)}")
+            raise
+    except Exception as e:
+        _log_quietly(log, f"Could not save settings: {describe_error(e)}")
         return False
 
 
@@ -167,7 +214,7 @@ def _own_window_handle(title):
         return None
 
 
-def _save_geometry(win) -> None:
+def _save_geometry(win, log=None) -> None:
     """Save the absolute frame rect (physical px) via Win32. Wire to `closing`.
     Wrapped end to end so a failure here can never block the window from closing."""
     try:
@@ -183,18 +230,18 @@ def _save_geometry(win) -> None:
             return
         if w <= 0 or h <= 0:
             return
-        prefs = load_prefs()
+        prefs = load_prefs(log)
         prefs["window"] = {"x": x, "y": y, "width": w, "height": h}
-        save_prefs(prefs)
+        save_prefs(prefs, log)
     except Exception:
         pass
 
 
-def _restore_geometry(win) -> None:
+def _restore_geometry(win, log=None) -> None:
     """Restore the saved frame rect via Win32. Wire to `shown` (after the OS
     window exists). Validate before applying; never raise."""
     try:
-        geo = load_prefs().get("window")
+        geo = load_prefs(log).get("window")
         if not isinstance(geo, dict):
             return
         x, y, w, h = geo.get("x"), geo.get("y"), geo.get("width"), geo.get("height")
@@ -688,15 +735,15 @@ class Api:
 
     # --- theme preference (through the shared prefs store) ------------------
     def _load_theme(self) -> str:
-        theme = load_prefs().get("theme")
+        theme = load_prefs(self.log).get("theme")
         return theme if theme in ("dark", "light") else "dark"
 
     def save_theme(self, theme: str):
         if theme not in ("dark", "light"):
             return {"ok": False}
-        prefs = load_prefs()
+        prefs = load_prefs(self.log)
         prefs["theme"] = theme
-        if save_prefs(prefs):
+        if save_prefs(prefs, self.log):
             self.log(f"Theme set to {theme}")
             return {"ok": True}
         self.log("Could not save theme pref: save_prefs failed")
@@ -924,10 +971,10 @@ def main():
     )
     api.set_window(win)
 
-    win.events.shown += lambda: _restore_geometry(win)
+    win.events.shown += lambda: _restore_geometry(win, api.log)
 
     def _on_closing():
-        _save_geometry(win)
+        _save_geometry(win, api.log)
         return True
     win.events.closing += _on_closing
 
