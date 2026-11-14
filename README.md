@@ -31,8 +31,9 @@ If you enjoyed this project and would like to buy me a coffee, check out my [Ko-
 
 ## Download and run
 
-Two ways to get it from the [Releases](../../releases) page - pick one:
+Choose an installation method. The installer and the .zip are on the [Releases](../../releases) page.
 
+- **WinGet:** `winget install --exact --id JDE-Projects.SimpleProjectManager`
 - **Installer (recommended):** download `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs the app, adds a Start menu shortcut, and can be removed later from **Add or Remove Programs**. Installs just for you by default (no admin needed); you can choose all users during setup.
 - **Portable .zip:** download `SimpleProjectManager-vX.Y.Z.zip`, extract it, and run `Simple Project Manager.exe` from inside the extracted folder. No install - good for a locked-down PC or a USB stick. Keep the folder together (the app ships as a folder, not a single loose .exe).
 
@@ -42,6 +43,7 @@ Windows only; no Python or setup required. Because it is unsigned, Windows Smart
 
 Simple Project Manager doesn't update itself. The bottom bar has a **Check for updates** button that tells you when a newer release is out; when it does, get the new version from the [Releases](../../releases) page the same way you first installed it.
 
+- **WinGet:** run `winget upgrade --exact --id JDE-Projects.SimpleProjectManager`.
 - **Installer:** download the new `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs over your current copy and keeps your theme choice.
 - **Portable .zip:** download and extract the new `SimpleProjectManager-vX.Y.Z.zip`. To keep your theme choice, copy `simple_project_manager.pref` from the old folder into the new one.
 
