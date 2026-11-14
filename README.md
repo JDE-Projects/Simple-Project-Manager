@@ -87,6 +87,7 @@ Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/`
 - Your theme choice is stored in a small local preference file next to the app; it is not part of any project file.
 - The debug log is off by default. When you turn it on, it writes one `Debug_Log_*.txt` next to the app for that run.
 - **Network use.** Other than the job you ask of it, this app makes one automatic network call: a check to GitHub for a newer release (at startup and when you press **Check for updates**), which sends only a version request. It collects and sends no personal data, usage data, or analytics.
+- **Privacy policy.** The full privacy policy for this app and the other JDE-Projects tools is at https://jde-projects.com/privacy.
 
 ## A note on how this was built
 
