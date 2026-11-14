@@ -1,12 +1,13 @@
 """
-Simple Project Manager — an IT project planner/tracker.
+Simple Project Manager: an IT project planner/tracker.
 
 JDE-Projects "Simple X Tool": Python 3 + PySide6/pywebview, single-file UI.
 Phases -> Steps -> Actions (+ Contacts), with owners, deadlines, status,
 priority, tags, notes and progress roll-up. The .xlsx IS the save format.
 
-Phase 3b scope: per-item editing, .xlsx Save/Open/Save As (the workbook IS
-the save file), native dialogs, and a silent recovery copy of unsaved work.
+This module is the desktop backend: per-item editing, .xlsx Save/Open/Save As
+(the workbook IS the save file), native dialogs, and a silent recovery copy of
+unsaved work.
 """
 import errno
 import json
