@@ -31,8 +31,9 @@ If you enjoyed this project and would like to buy me a coffee, check out my [Ko-
 
 ## Download and run
 
-Two ways to get it from the [Releases](../../releases) page - pick one:
+Choose an installation method. The installer and the .zip are on the [Releases](../../releases) page.
 
+- **WinGet:** `winget install --exact --id JDE-Projects.SimpleProjectManager`
 - **Installer (recommended):** download `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs the app, adds a Start menu shortcut, and can be removed later from **Add or Remove Programs**. Installs just for you by default (no admin needed); you can choose all users during setup.
 - **Portable .zip:** download `SimpleProjectManager-vX.Y.Z.zip`, extract it, and run `Simple Project Manager.exe` from inside the extracted folder. No install - good for a locked-down PC or a USB stick. Keep the folder together (the app ships as a folder, not a single loose .exe).
 
@@ -42,6 +43,7 @@ Windows only; no Python or setup required. Because it is unsigned, Windows Smart
 
 Simple Project Manager doesn't update itself. The bottom bar has a **Check for updates** button that tells you when a newer release is out; when it does, get the new version from the [Releases](../../releases) page the same way you first installed it.
 
+- **WinGet:** run `winget upgrade --exact --id JDE-Projects.SimpleProjectManager`.
 - **Installer:** download the new `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs over your current copy and keeps your theme choice.
 - **Portable .zip:** download and extract the new `SimpleProjectManager-vX.Y.Z.zip`. To keep your theme choice, copy `simple_project_manager.pref` from the old folder into the new one.
 
@@ -54,9 +56,7 @@ machine, and is signed with a build-provenance attestation. To confirm your
 download is genuine, install the [GitHub CLI](https://cli.github.com) and run:
 
 ```
-gh attestation verify SimpleProjectManager-vX.Y.Z.zip \
-  --repo JDE-Projects/Simple-Project-Manager \
-  --signer-repo JDE-Projects/Build-Tools
+gh attestation verify SimpleProjectManager-vX.Y.Z.zip --repo JDE-Projects/Simple-Project-Manager --signer-repo JDE-Projects/Build-Tools
 ```
 
 A `Verification succeeded!` line means the file was built by the published
@@ -89,6 +89,7 @@ Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/`
 - Your theme choice is stored in a small local preference file next to the app; it is not part of any project file.
 - The debug log is off by default. When you turn it on, it writes one `Debug_Log_*.txt` next to the app for that run.
 - **Network use.** Other than the job you ask of it, this app makes one automatic network call: a check to GitHub for a newer release (at startup and when you press **Check for updates**), which sends only a version request. It collects and sends no personal data, usage data, or analytics.
+- **Privacy policy.** The full privacy policy for this app and the other JDE-Projects tools is at https://jde-projects.com/privacy.
 
 ## A note on how this was built
 
@@ -100,4 +101,4 @@ Released under the [PolyForm Noncommercial License 1.0.0](LICENSE). Personal and
 
 This build bundles third-party code (Qt via PySide6, pywebview, openpyxl, and the Sora and JetBrains Mono fonts). Their notices are in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).
 
-For commercial licensing, open a [GitHub issue](https://github.com/JDE-Projects/Simple-Project-Manager/issues) with the title "Commercial License Inquiry".
+For commercial licensing, see the [JDE-Projects support page](https://jde-projects.com/support/#commercial-licensing).
