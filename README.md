@@ -54,9 +54,7 @@ machine, and is signed with a build-provenance attestation. To confirm your
 download is genuine, install the [GitHub CLI](https://cli.github.com) and run:
 
 ```
-gh attestation verify SimpleProjectManager-vX.Y.Z.zip \
-  --repo JDE-Projects/Simple-Project-Manager \
-  --signer-repo JDE-Projects/Build-Tools
+gh attestation verify SimpleProjectManager-vX.Y.Z.zip --repo JDE-Projects/Simple-Project-Manager --signer-repo JDE-Projects/Build-Tools
 ```
 
 A `Verification succeeded!` line means the file was built by the published
