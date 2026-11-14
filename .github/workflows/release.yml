@@ -17,3 +17,4 @@ jobs:
       build_command: "Build_Simple_Project_Manager.bat"
       app_id: "9c6da3fc-e0ce-4e6f-9119-00efc3e4119f"
       entry_script: "simple_project_manager.py"
+      verify_runtime_lock: true
