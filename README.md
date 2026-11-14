@@ -67,8 +67,8 @@ pipeline from this repo. You can also check the file against the published
 
 If you would rather run or build it yourself, you need:
 
-- **Python 3** on the machine's PATH.
-- `pip install -r requirements.txt` (pinned versions; includes `pywebview`, `PySide6`, `qtpy`, `openpyxl`, and `pyinstaller`). Keep `PyQt6` uninstalled so PySide6 is the bundled binding.
+- **64-bit Python 3.14** on the machine's PATH. `requirements.txt` is a locked package list made for that version, with every package checked against its published hash.
+- To run from source: `pip install --require-hashes --build-constraint build-constraints.txt -r requirements.txt` (includes `pywebview`, `PySide6`, `qtpy`, `openpyxl`, and `pyinstaller`). Keep `PyQt6` uninstalled so PySide6 is the bundled binding. The build script does not need this step: it installs the same list into its own private environment in `build\venv` and leaves your Python untouched.
 
 Keep `simple_project_manager.py`, `simple_project_manager-UI.html`, the `fonts/` folder, `simple_project_manager.ico` and `simple_project_manager.png` together. Then either:
 

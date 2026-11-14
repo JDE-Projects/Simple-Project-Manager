@@ -10,3 +10,4 @@ jobs:
       contents: read
     with:
       entry_script: "simple_project_manager.py"
+      verify_runtime_lock: true
