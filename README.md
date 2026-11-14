@@ -34,7 +34,7 @@ If you enjoyed this project and would like to buy me a coffee, check out my [Ko-
 Choose an installation method. The installer and the .zip are on the [Releases](../../releases) page.
 
 - **WinGet:** `winget install --exact --id JDE-Projects.SimpleProjectManager`
-- **Installer (recommended):** download `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs the app, adds a Start menu shortcut, and can be removed later from **Add or Remove Programs**. Installs just for you by default (no admin needed); you can choose all users during setup.
+- **Installer (recommended):** download `SimpleProjectManager-vX.Y.Z-setup.exe` and run it. It installs the app, adds a Start menu shortcut, and can be removed later from **Add or Remove Programs**. Installs just for you, no admin needed.
 - **Portable .zip:** download `SimpleProjectManager-vX.Y.Z.zip`, extract it, and run `Simple Project Manager.exe` from inside the extracted folder. No install - good for a locked-down PC or a USB stick. Keep the folder together (the app ships as a folder, not a single loose .exe).
 
 Windows only; no Python or setup required. Because it is unsigned, Windows SmartScreen may warn about an unknown publisher the first time. Click **More info > Run anyway**.
