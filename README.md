@@ -99,4 +99,4 @@ Released under the [PolyForm Noncommercial License 1.0.0](LICENSE). Personal and
 
 This build bundles third-party code (Qt via PySide6, pywebview, openpyxl, and the Sora and JetBrains Mono fonts). Their notices are in [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).
 
-For commercial licensing, open a [GitHub issue](https://github.com/JDE-Projects/Simple-Project-Manager/issues) with the title "Commercial License Inquiry".
+For commercial licensing, see the [JDE-Projects support page](https://jde-projects.com/support/#commercial-licensing).
